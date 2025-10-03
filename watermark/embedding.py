@@ -1,7 +1,5 @@
-
 from watermark.algorithms import lsb, dct, dwt, cnn_autoencoder
 
-# Словарь доступных алгоритмов
 algorithms = {
     "lsb": lsb,
     "dct": dct,
@@ -12,11 +10,11 @@ algorithms = {
 def embed(image, secret, params=None, method="lsb"):
     """
     Универсальная функция внедрения водяного знака.
-    :param image: np.ndarray — исходное изображение
-    :param secret: любой тип — секрет/водяной знак
-    :param params: dict — параметры внедрения для метода
-    :param method: str — название алгоритма
-    :return: np.ndarray — изображение с внедрённым водяным знаком
+    :param image: np.ndarray
+    :param secret: str или np.ndarray
+    :param params: dict
+    :param method: str
+    :return: np.ndarray
     """
     if params is None:
         params = {}

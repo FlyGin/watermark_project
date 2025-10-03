@@ -25,7 +25,8 @@ watermark_project/
 │
 ├── tests/                   # Модуль с автоматизированными тестами
 │   ├── __init__.py
-│   ├── test_lsb.py
+|   ├── lsb_tests
+|   │   ├── test_lsb.py
 │   ├── test_dct.py
 │   ├── test_extraction.py
 │   ├── test_utils.py

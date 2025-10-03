@@ -1,0 +1,56 @@
+|   .gitignore
+|   clean_structure.txt
+|   main.py
+|   Plan.md
+|   README.md
+|   requirements.txt
+|   structure.txt
+|   Tree.txt
+|   
++---gui
+|       __init__.py
+|       
++---helpers
+|       how_to_get_structure.md
+|       
++---tests
+|   |   __init__.py
+|   |   
+|   +---lsb_tests
+|   |   |   test_lsb.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_lsb.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           
+|   \---__pycache__
+|           __init__.cpython-312.pyc
+|           
+\---watermark
+    |   embedding.py
+    |   extraction.py
+    |   utils.py
+    |   watermark_helper.txt
+    |   __init__.py
+    |   
+    +---algorithms
+    |   |   AlgorithmsHelper.txt
+    |   |   cnn_autoencoder.py
+    |   |   dct.py
+    |   |   dwt.py
+    |   |   __init__.py
+    |   |   
+    |   +---lsb
+    |   |       lsb.py
+    |   |       lsb_image.py
+    |   |       lsb_text.py
+    |   |       
+    |   \---__pycache__
+    |           cnn_autoencoder.cpython-312.pyc
+    |           dct.cpython-312.pyc
+    |           dwt.cpython-312.pyc
+    |           lsb.cpython-312.pyc
+    |           __init__.cpython-312.pyc
+    |           
+    \---__pycache__

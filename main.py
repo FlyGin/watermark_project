@@ -3,16 +3,20 @@ from watermark.embedding import embed
 from watermark.extraction import extract
 
 def main():
-    # Example date
-    test_image = np.zeros((256, 256, 3), dtype=np.uint8)   # Placeholder for an actual image
-    test_secret = "Hello, Stego!"                                # Пример секрета
-    params = {"depth": 1}     
+    # Пример исходного изображения (256x256x3)
+    test_image = np.zeros((256, 256, 3), dtype=np.uint8)
 
-    # Внедрение (здесь 'lsb' — название метода, может быть любым из реализованных)
+    # Текстовый секрет
+    test_secret = "Hello, Stego!"
+
+    params = {"depth": 1}
+
+    # Внедрение LSB (вызывает фасад lsb.py, который делегирует в text.py)
     stego_image = embed(test_image, test_secret, params, method="lsb")
     print("Внедрение завершено. Размер стегоизображения:", stego_image.shape)
 
-    # Извлечение
+    # Для извлечения текстового секрета необходимо указать его длину
+    params["length"] = len(test_secret)
     recovered_secret = extract(stego_image, params, method="lsb")
     print("Извлечённый секрет:", recovered_secret)
 
