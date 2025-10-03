@@ -1,0 +1,42 @@
+watermark_project/
+│
+├── main.py                  # Точка входа (запуск GUI)
+│
+├── requirements.txt         # Список зависимостей (opencv, pillow, numpy, pyqt5/tkinter/streamlit и др.)
+│
+├── README.md                # Описание проекта, установки, запуска, параметров
+│
+├── watermark/               # Пакет с логикой внедрения и извлечения водяных знаков
+│   ├── __init__.py
+│   ├── algorithms/          # Пакет с реализациями различных методов
+│   │   ├── __init__.py
+│   │   ├── lsb.py           # Least Significant Bit метод
+│   │   ├── dct.py           # DCT/DWT-метод
+│   │   ├── cnn_autoencoder.py # Заготовка/реализация на нейросетях (если понадобится)
+│   ├── embedding.py         # Общий интерфейс внедрения
+│   ├── extraction.py        # Общий интерфейс извлечения
+│   ├── utils.py             # Вспомогательные функции (конвертации, обработка изображений)
+│
+├── gui/                     # Модуль с графическим интерфейсом пользователя
+│   ├── __init__.py
+│   ├── window.py            # Основное окно приложения
+│   ├── layout.py            # Описание элементов интерфейса
+│   ├── events.py            # Логика обработки событий (кнопки, загрузка и пр.)
+│
+├── tests/                   # Модуль с автоматизированными тестами
+│   ├── __init__.py
+│   ├── test_lsb.py
+│   ├── test_dct.py
+│   ├── test_extraction.py
+│   ├── test_utils.py
+│
+├── examples/                # Примеры изображений, секретов, результатов для демонстрации
+│   ├── original.png
+│   ├── watermark.txt
+│   ├── embedded.png
+│   ├── extracted.txt
+│
+└── docs/                    # Документация (PDF, скриншоты, схемы для пояснительной записки)
+    ├── architecture.pdf
+    ├── user_manual.md
+    └── algo_schemes.png
