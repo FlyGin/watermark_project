@@ -1,3 +1,6 @@
 **/__pycache__/
 *.pyc
 *.pyo
+# Тестовые данные
+/tests/test_data/
+

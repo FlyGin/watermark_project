@@ -14,16 +14,303 @@
 |       how_to_get_structure.md
 |       
 +---tests
-|   |   __init__.py
-|   |   
-|   +---lsb_tests
-|   |   |   test_lsb.py
-|   |   |   __init__.py
-|   |   |   
-|   |   \---__pycache__
-|   |           test_lsb.cpython-312.pyc
-|   |           __init__.cpython-312.pyc
+|   +---integration_tests
+|   |   \---lsb
+|   |       |   lsb_image_demo.py
+|   |       |   lsb_text_demo.py
+|   |       |   __init__.py
+|   |       |   
+|   |       \---results
+|   |           +---image
+|   |           \---text
+|   +---test_data
+|   |   +---images_secret
+|   |   |       circle60.png
+|   |   |       circle61.png
+|   |   |       circle62.png
+|   |   |       circle63.png
+|   |   |       circle64.png
+|   |   |       circle65.png
+|   |   |       circle66.png
+|   |   |       circle67.png
+|   |   |       circle68.png
+|   |   |       circle69.png
+|   |   |       circle70.png
+|   |   |       circle71.png
+|   |   |       circle72.png
+|   |   |       circle73.png
+|   |   |       circle74.png
+|   |   |       circle75.png
+|   |   |       circle76.png
+|   |   |       circle77.png
+|   |   |       circle78.png
+|   |   |       circle79.png
+|   |   |       circle80.png
+|   |   |       circle81.png
+|   |   |       circle82.png
+|   |   |       circle83.png
+|   |   |       circle84.png
+|   |   |       circle85.png
+|   |   |       circle86.png
+|   |   |       circle87.png
+|   |   |       circle88.png
+|   |   |       circle89.png
+|   |   |       circle90.png
+|   |   |       circle91.png
+|   |   |       circle92.png
+|   |   |       circle93.png
+|   |   |       circle94.png
+|   |   |       circle95.png
+|   |   |       circle96.png
+|   |   |       circle97.png
+|   |   |       circle98.png
+|   |   |       circle99.png
+|   |   |       ellipse60.png
+|   |   |       ellipse61.png
+|   |   |       ellipse62.png
+|   |   |       ellipse63.png
+|   |   |       ellipse64.png
+|   |   |       ellipse65.png
+|   |   |       ellipse66.png
+|   |   |       ellipse67.png
+|   |   |       ellipse68.png
+|   |   |       ellipse69.png
+|   |   |       ellipse70.png
+|   |   |       ellipse71.png
+|   |   |       ellipse72.png
+|   |   |       ellipse73.png
+|   |   |       ellipse74.png
+|   |   |       ellipse75.png
+|   |   |       ellipse76.png
+|   |   |       ellipse77.png
+|   |   |       ellipse78.png
+|   |   |       ellipse79.png
+|   |   |       ellipse80.png
+|   |   |       ellipse81.png
+|   |   |       ellipse82.png
+|   |   |       ellipse83.png
+|   |   |       ellipse84.png
+|   |   |       ellipse85.png
+|   |   |       ellipse86.png
+|   |   |       ellipse87.png
+|   |   |       ellipse88.png
+|   |   |       ellipse89.png
+|   |   |       ellipse90.png
+|   |   |       ellipse91.png
+|   |   |       ellipse92.png
+|   |   |       ellipse93.png
+|   |   |       ellipse94.png
+|   |   |       ellipse95.png
+|   |   |       ellipse96.png
+|   |   |       ellipse97.png
+|   |   |       ellipse98.png
+|   |   |       ellipse99.png
+|   |   |       rectangle60.png
+|   |   |       rectangle61.png
+|   |   |       rectangle62.png
+|   |   |       rectangle63.png
+|   |   |       rectangle64.png
+|   |   |       rectangle65.png
+|   |   |       rectangle66.png
+|   |   |       rectangle67.png
+|   |   |       rectangle68.png
+|   |   |       rectangle69.png
+|   |   |       rectangle70.png
+|   |   |       rectangle71.png
+|   |   |       rectangle72.png
+|   |   |       rectangle73.png
+|   |   |       rectangle74.png
+|   |   |       rectangle75.png
+|   |   |       rectangle76.png
+|   |   |       rectangle77.png
+|   |   |       rectangle78.png
+|   |   |       rectangle79.png
+|   |   |       rectangle80.png
+|   |   |       rectangle81.png
+|   |   |       rectangle82.png
+|   |   |       rectangle83.png
+|   |   |       rectangle84.png
+|   |   |       rectangle85.png
+|   |   |       rectangle86.png
+|   |   |       rectangle87.png
+|   |   |       rectangle88.png
+|   |   |       rectangle89.png
+|   |   |       rectangle90.png
+|   |   |       rectangle91.png
+|   |   |       rectangle92.png
+|   |   |       rectangle93.png
+|   |   |       rectangle94.png
+|   |   |       rectangle95.png
+|   |   |       rectangle96.png
+|   |   |       rectangle97.png
+|   |   |       rectangle98.png
+|   |   |       rectangle99.png
+|   |   |       square60.png
+|   |   |       square61.png
+|   |   |       square62.png
+|   |   |       square63.png
+|   |   |       square64.png
+|   |   |       square65.png
+|   |   |       square66.png
+|   |   |       square67.png
+|   |   |       square68.png
+|   |   |       square69.png
+|   |   |       square70.png
+|   |   |       square71.png
+|   |   |       square72.png
+|   |   |       square73.png
+|   |   |       square74.png
+|   |   |       square75.png
+|   |   |       square76.png
+|   |   |       square77.png
+|   |   |       square78.png
+|   |   |       square79.png
+|   |   |       square80.png
+|   |   |       square81.png
+|   |   |       square82.png
+|   |   |       square83.png
+|   |   |       square84.png
+|   |   |       square85.png
+|   |   |       square86.png
+|   |   |       square87.png
+|   |   |       square88.png
+|   |   |       square89.png
+|   |   |       square90.png
+|   |   |       square91.png
+|   |   |       square92.png
+|   |   |       square93.png
+|   |   |       square94.png
+|   |   |       square95.png
+|   |   |       square96.png
+|   |   |       square97.png
+|   |   |       square98.png
+|   |   |       square99.png
+|   |   |       triangle60.png
+|   |   |       triangle61.png
+|   |   |       triangle62.png
+|   |   |       triangle63.png
+|   |   |       triangle64.png
+|   |   |       triangle65.png
+|   |   |       triangle66.png
+|   |   |       triangle67.png
+|   |   |       triangle68.png
+|   |   |       triangle69.png
+|   |   |       triangle70.png
+|   |   |       triangle71.png
+|   |   |       triangle72.png
+|   |   |       triangle73.png
+|   |   |       triangle74.png
+|   |   |       triangle75.png
+|   |   |       triangle76.png
+|   |   |       triangle77.png
+|   |   |       triangle78.png
+|   |   |       triangle79.png
+|   |   |       triangle80.png
+|   |   |       triangle81.png
+|   |   |       triangle82.png
+|   |   |       triangle83.png
+|   |   |       triangle84.png
+|   |   |       triangle85.png
+|   |   |       triangle86.png
+|   |   |       triangle87.png
+|   |   |       triangle88.png
+|   |   |       triangle89.png
+|   |   |       triangle90.png
+|   |   |       triangle91.png
+|   |   |       triangle92.png
+|   |   |       triangle93.png
+|   |   |       triangle94.png
+|   |   |       triangle95.png
+|   |   |       triangle96.png
+|   |   |       triangle97.png
+|   |   |       triangle98.png
+|   |   |       triangle99.png
+|   |   |       
+|   |   +---images_source
+|   |   |       001_00364.png
+|   |   |       001_00715.png
+|   |   |       002_00085.png
+|   |   |       002_00125.png
+|   |   |       006_00569.png
+|   |   |       008_00028.png
+|   |   |       011_00015.png
+|   |   |       012_00051.png
+|   |   |       012_00162.png
+|   |   |       014_00009.png
+|   |   |       015_00003.png
+|   |   |       015_00053.png
+|   |   |       015_00113.png
+|   |   |       015_00137.png
+|   |   |       015_00143.png
+|   |   |       015_00448.png
+|   |   |       015_00494.png
+|   |   |       023_00685.png
+|   |   |       023_00735.png
+|   |   |       023_00962.png
+|   |   |       023_01979.png
+|   |   |       025_02246.png
+|   |   |       026_00002.png
+|   |   |       026_00004.png
+|   |   |       026_00173.png
+|   |   |       026_00344.png
+|   |   |       027_00173.png
+|   |   |       027_00753.png
+|   |   |       027_01131.png
+|   |   |       027_01762.png
+|   |   |       029_00271.png
+|   |   |       029_00749.png
+|   |   |       029_00856.png
+|   |   |       029_00968.png
+|   |   |       030_00571.png
+|   |   |       032_00107.png
+|   |   |       032_00192.png
+|   |   |       032_00478.png
+|   |   |       033_08173.png
+|   |   |       033_12622.png
+|   |   |       033_13864.png
+|   |   |       033_13978.png
+|   |   |       033_15194.png
+|   |   |       033_21565.png
+|   |   |       033_21829.png
+|   |   |       033_24636.png
+|   |   |       033_26994.png
+|   |   |       033_28139.png
+|   |   |       033_37889.png
+|   |   |       033_40498.png
+|   |   |       033_40610.png
+|   |   |       033_40732.png
+|   |   |       033_46296.png
+|   |   |       033_46568.png
+|   |   |       033_48214.png
+|   |   |       033_51692.png
+|   |   |       033_53308.png
+|   |   |       033_55921.png
+|   |   |       033_57007.png
+|   |   |       033_57923.png
+|   |   |       033_59575.png
+|   |   |       033_59881.png
+|   |   |       033_59959.png
+|   |   |       033_60550.png
+|   |   |       036_00127.png
+|   |   |       037_00077.png
+|   |   |       037_00278.png
+|   |   |       037_00615.png
+|   |   |       
+|   |   \---strings
+|   |           simple_phrases.txt
 |   |           
+|   +---unit_tests
+|   |   \---lsb_tests
+|   |       |   test_lsb_image.py
+|   |       |   test_lsb_text.py
+|   |       |   __init__.py
+|   |       |   
+|   |       \---__pycache__
+|   |               test_lsb.cpython-312.pyc
+|   |               test_lsb_image.cpython-312.pyc
+|   |               test_lsb_text.cpython-312.pyc
+|   |               __init__.cpython-312.pyc
+|   |               
 |   \---__pycache__
 |           __init__.cpython-312.pyc
 |           
@@ -42,10 +329,17 @@
     |   |   __init__.py
     |   |   
     |   +---lsb
-    |   |       lsb.py
-    |   |       lsb_image.py
-    |   |       lsb_text.py
-    |   |       
+    |   |   |   lsb.py
+    |   |   |   lsb_image.py
+    |   |   |   lsb_text.py
+    |   |   |   __init__.py
+    |   |   |   
+    |   |   \---__pycache__
+    |   |           lsb.cpython-312.pyc
+    |   |           lsb_image.cpython-312.pyc
+    |   |           lsb_text.cpython-312.pyc
+    |   |           __init__.cpython-312.pyc
+    |   |           
     |   \---__pycache__
     |           cnn_autoencoder.cpython-312.pyc
     |           dct.cpython-312.pyc

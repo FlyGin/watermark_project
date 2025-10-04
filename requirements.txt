@@ -1,0 +1,7 @@
+numpy>=1.22
+pillow>=9.0
+matplotlib>=3.5
+pytest>=7.0
+opencv-python>=4.6
+scikit-image>=0.19
+PyQt5>=5.15
