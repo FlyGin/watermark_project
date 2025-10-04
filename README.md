@@ -17,12 +17,7 @@
 
 Запустить все тесты проекта:
 
-python -m unittest discover -s tests
-
-
-Только для LSB:
-python -m unittest tests.lsb_tests.test_lsb_text
-python -m unittest tests.lsb_tests.test_lsb_image
+python -m unittest discover -s tests.unit_tests
 
 
 ## Интеграционные/визуальные тесты

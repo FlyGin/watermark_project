@@ -14,15 +14,53 @@
 |       how_to_get_structure.md
 |       
 +---tests
+|   |   __init__.py
+|   |   
 |   +---integration_tests
-|   |   \---lsb
-|   |       |   lsb_image_demo.py
-|   |       |   lsb_text_demo.py
-|   |       |   __init__.py
-|   |       |   
-|   |       \---results
-|   |           +---image
-|   |           \---text
+|   |   |   image_demo.py
+|   |   |   text_demo.py
+|   |   |   __init__.py
+|   |   |   
+|   |   +---lsb_tests
+|   |   |   |   __init__.py
+|   |   |   |   
+|   |   |   +---results
+|   |   |   |   +---image
+|   |   |   |   \---text
+|   |   |   |       +---result_20251004_030932
+|   |   |   |       |       stego_033_40732.png
+|   |   |   |       |       
+|   |   |   |       +---result_20251004_031228
+|   |   |   |       |       visual_result_20251004_031228.png
+|   |   |   |       |       
+|   |   |   |       +---result_20251004_031245
+|   |   |   |       |       visual_result_20251004_031245.png
+|   |   |   |       |       
+|   |   |   |       +---result_20251004_031504
+|   |   |   |       |       visual_result_20251004_031504.png
+|   |   |   |       |       
+|   |   |   |       +---result_20251004_031944
+|   |   |   |       |       visual_result_20251004_031944.png
+|   |   |   |       |       
+|   |   |   |       +---result_20251004_032051
+|   |   |   |       |       visual_result_20251004_032051.png
+|   |   |   |       |       
+|   |   |   |       +---result_20251004_032357
+|   |   |   |       |       visual_result_20251004_032357.png
+|   |   |   |       |       
+|   |   |   |       \---result_20251004_032652
+|   |   |   |               metrics.txt
+|   |   |   |               visual_result_20251004_032652.png
+|   |   |   |               
+|   |   |   \---__pycache__
+|   |   |           lsb_text_demo.cpython-312.pyc
+|   |   |           text_demo.cpython-312.pyc
+|   |   |           __init__.cpython-312.pyc
+|   |   |           
+|   |   \---__pycache__
+|   |           text_demo.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           
 |   +---test_data
 |   |   +---images_secret
 |   |   |       circle60.png
@@ -300,17 +338,22 @@
 |   |           simple_phrases.txt
 |   |           
 |   +---unit_tests
-|   |   \---lsb_tests
-|   |       |   test_lsb_image.py
-|   |       |   test_lsb_text.py
-|   |       |   __init__.py
-|   |       |   
-|   |       \---__pycache__
-|   |               test_lsb.cpython-312.pyc
-|   |               test_lsb_image.cpython-312.pyc
-|   |               test_lsb_text.cpython-312.pyc
-|   |               __init__.cpython-312.pyc
-|   |               
+|   |   |   __init__.py
+|   |   |   
+|   |   +---lsb_tests
+|   |   |   |   test_lsb_image.py
+|   |   |   |   test_lsb_text.py
+|   |   |   |   __init__.py
+|   |   |   |   
+|   |   |   \---__pycache__
+|   |   |           test_lsb.cpython-312.pyc
+|   |   |           test_lsb_image.cpython-312.pyc
+|   |   |           test_lsb_text.cpython-312.pyc
+|   |   |           __init__.cpython-312.pyc
+|   |   |           
+|   |   \---__pycache__
+|   |           __init__.cpython-312.pyc
+|   |           
 |   \---__pycache__
 |           __init__.cpython-312.pyc
 |           
