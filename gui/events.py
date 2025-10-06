@@ -1,5 +1,10 @@
 # gui/events.py
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PIL import Image
+import numpy as np
+import os
+from watermark.embedding import embed
+from watermark.extraction import extract
 
 def connect_events(parent):
     parent.btn_load_cover.clicked.connect(lambda: load_cover_file(parent))
@@ -9,7 +14,7 @@ def connect_events(parent):
     parent.btn_reset.clicked.connect(lambda: reset_gui(parent))
 
 def load_cover_file(parent):
-    fname, _ = QFileDialog.getOpenFileName(parent, "Выберите исходный файл", "", "Images (*.png *.jpg *.bmp);;All Files (*)")
+    fname, _ = QFileDialog.getOpenFileName(parent, "Выберите исходный файл", "", "Images (*.png *.jpg *.bmp *.jpeg);;All Files (*)")
     if fname:
         parent.cover_path = fname
         parent.result_text.append(f"Загружен исходный файл: {fname}")
@@ -21,39 +26,99 @@ def load_wm_file(parent):
         parent.result_text.append(f"Загружен файл водяного знака: {fname}")
 
 def embed_watermark(parent):
-    # Вариант — получить выбранный алгоритм, пути до файлов,/или текст
-    algorithm = parent.combo_algo.currentText()
-    cover = getattr(parent, "cover_path", None)
-    wm = parent.lineedit_wm.text() or getattr(parent, "wm_path", None)
-    if not cover or not wm:
-        QMessageBox.warning(parent, "Ошибка", "Не выбран исходный файл или знак.")
+    # LSB встраивание
+    cover_path = getattr(parent, "cover_path", None)
+    wm_path = getattr(parent, "wm_path", None)
+    text = parent.lineedit_wm.text().strip()
+
+    if not cover_path:
+        QMessageBox.warning(parent, "Ошибка", "Не выбран исходный файл.")
         return
-    # Тут — логика взаимодействия с embedding из watermark (заглушка):
+        
+    if not wm_path and not text:
+        QMessageBox.warning(parent, "Ошибка", "Не выбран водяной знак (файл или текст).")
+        return
+    
     try:
-        # from watermark.embedding import embed_image, ... # импортируешь нужное
-        # result = embed_image(cover, wm, {'algorithm': algorithm})
-        result = "Успешно встроено (заглушка)"  # подменишь на реальную интеграцию
-        parent.result_text.append(result)
+        # Загружаем исходное изображение
+        cover = np.array(Image.open(cover_path))
+        params = {"depth": 1}
+
+        # Определяем тип секрета
+        if text:  # Если введён текст
+            secret = text
+            parent.embedded_secret_type = "text"
+            parent.embedded_secret_length = len(text.encode("utf-8"))
+        elif wm_path:  # Если выбран файл
+            if os.path.splitext(wm_path)[1].lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
+                secret = np.array(Image.open(wm_path))
+                parent.embedded_secret_type = "image"
+                parent.embedded_secret_shape = secret.shape
+            else:
+                # Пробуем прочитать как текстовый файл
+                with open(wm_path, 'r', encoding='utf-8') as f:
+                    secret = f.read()
+                parent.embedded_secret_type = "text"
+                parent.embedded_secret_length = len(secret.encode("utf-8"))
+
+        # Встраиваем с помощью LSB
+        result = embed(cover, secret, params, method="lsb")
+        
+        # Сохраняем результат
+        output_path = "stego_result.png"
+        Image.fromarray(result).save(output_path)
+        parent.result_text.append(f"✅ Встраивание успешно! Результат сохранён: {output_path}")
+        parent.stego_path = output_path  # Сохраняем путь для извлечения
+        
     except Exception as exc:
-        parent.result_text.append(f"Ошибка: {exc}")
+        parent.result_text.append(f"❌ Ошибка встраивания: {exc}")
+        
 
 def extract_watermark(parent):
-    algorithm = parent.combo_algo.currentText()
-    cover = getattr(parent, "cover_path", None)
-    if not cover:
+    # LSB извлечение
+    stego_path = getattr(parent, "stego_path", None) or getattr(parent, "cover_path", None)
+    
+    if not stego_path:
         QMessageBox.warning(parent, "Ошибка", "Не выбран файл для извлечения.")
         return
+    
+    # Проверяем, что у нас есть информация о том, что было встроено
+    secret_type = getattr(parent, "embedded_secret_type", None)
+    if not secret_type:
+        QMessageBox.warning(parent, "Ошибка", "Неизвестно, что было встроено. Сначала выполните встраивание.")
+        return
+    
     try:
-        # from watermark.extraction import extract_image, ...
-        # result = extract_image(cover, {'algorithm': algorithm})
-        result = "Водяной знак: пример (заглушка)"  # подменишь на реальную интеграцию
-        parent.result_text.append(result)
+        # Загружаем стего-изображение
+        stego_image = np.array(Image.open(stego_path))
+        params = {"depth": 1}
+        
+        # Добавляем нужные параметры в зависимости от типа секрета
+        if secret_type == "text":
+            params["length"] = getattr(parent, "embedded_secret_length", 10)  # fallback
+        elif secret_type == "image":
+            params["secret_shape"] = getattr(parent, "embedded_secret_shape", (64, 64, 3))  # fallback
+        
+        # Извлекаем
+        extracted = extract(stego_image, params, method="lsb")
+        
+        # Отображаем результат
+        if isinstance(extracted, str):
+            parent.result_text.append(f"🔍 Извлечённый текст: '{extracted}'")
+        else:
+            # Сохраняем извлечённое изображение
+            output_path = "extracted_secret.png"
+            Image.fromarray(extracted).save(output_path)
+            parent.result_text.append(f"🔍 Извлечённое изображение сохранено: {output_path}")
+            
     except Exception as exc:
-        parent.result_text.append(f"Ошибка: {exc}")
+        parent.result_text.append(f"❌ Ошибка извлечения: {exc}")
 
 def reset_gui(parent):
     parent.lineedit_wm.clear()
     parent.result_text.clear()
-    parent.cover_path = None
-    parent.wm_path = None
-
+    # Очищаем пути и мета-информацию
+    for attr in ['cover_path', 'wm_path', 'stego_path', 'embedded_secret_type', 
+                 'embedded_secret_length', 'embedded_secret_shape']:
+        if hasattr(parent, attr):
+            delattr(parent, attr)

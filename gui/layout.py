@@ -1,3 +1,4 @@
+# gui/layout.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QTextEdit, QFileDialog, QLineEdit
@@ -7,18 +8,18 @@ def create_main_layout(parent):
     main_widget = QWidget(parent)
     layout = QVBoxLayout(main_widget)
     
-    # 1. Выбор алгоритма
+    # 1. Выбор алгоритма (только LSB пока)
     algo_layout = QHBoxLayout()
     label_algo = QLabel("Алгоритм:")
     combo_algo = QComboBox()
-    combo_algo.addItems(["LSB", "DCT", "DWT", "CNN"])
+    combo_algo.addItems(["LSB"])  # Только LSB
     algo_layout.addWidget(label_algo)
     algo_layout.addWidget(combo_algo)
     layout.addLayout(algo_layout)
     
     # 2. Загрузка исходного файла
     file_layout = QHBoxLayout()
-    btn_load_cover = QPushButton("Загрузить исходный файл")
+    btn_load_cover = QPushButton("Загрузить исходное изображение")
     file_layout.addWidget(btn_load_cover)
     layout.addLayout(file_layout)
     
@@ -29,14 +30,15 @@ def create_main_layout(parent):
     label_or_text = QLabel("или введите текст:")
     wm_layout.addWidget(label_or_text)
     lineedit_wm = QLineEdit()
+    lineedit_wm.setPlaceholderText("Введите текст для встраивания...")
     wm_layout.addWidget(lineedit_wm)
     layout.addLayout(wm_layout)
     
     # 4. Кнопки действий
     actions_layout = QHBoxLayout()
-    btn_embed = QPushButton("Встроить")
-    btn_extract = QPushButton("Извлечь")
-    btn_reset = QPushButton("Сбросить")
+    btn_embed = QPushButton("🔒 Встроить")
+    btn_extract = QPushButton("🔍 Извлечь")
+    btn_reset = QPushButton("🗑️ Сбросить")
     actions_layout.addWidget(btn_embed)
     actions_layout.addWidget(btn_extract)
     actions_layout.addWidget(btn_reset)
@@ -49,9 +51,7 @@ def create_main_layout(parent):
     layout.addWidget(result_label)
     layout.addWidget(result_text)
     
-    # Можно добавить ещё превью изображения/ошибки и др. 
-    
-    # — сохранить виджеты в parent для доступа в events.py
+    # Сохранить виджеты в parent для доступа в events.py
     parent.combo_algo = combo_algo
     parent.btn_load_cover = btn_load_cover
     parent.btn_load_wm = btn_load_wm
@@ -60,6 +60,5 @@ def create_main_layout(parent):
     parent.btn_extract = btn_extract
     parent.btn_reset = btn_reset
     parent.result_text = result_text
-    # ... далее любые дополнительные элементы
     
     return main_widget
