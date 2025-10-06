@@ -1,20 +1,33 @@
 # gui/layout.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QComboBox, QTextEdit, QFileDialog, QLineEdit
+    QComboBox, QTextEdit, QFileDialog, QLineEdit, QSpinBox
 )
 
 def create_main_layout(parent):
     main_widget = QWidget(parent)
     layout = QVBoxLayout(main_widget)
     
-    # 1. Выбор алгоритма (только LSB пока)
+    # 1. Выбор алгоритма и глубины
     algo_layout = QHBoxLayout()
+    
+    # Выбор алгоритма
     label_algo = QLabel("Алгоритм:")
     combo_algo = QComboBox()
     combo_algo.addItems(["LSB"])  # Только LSB
+    
+    # Выбор глубины
+    label_depth = QLabel("Глубина:")
+    spinbox_depth = QSpinBox()
+    spinbox_depth.setRange(1, 8)  # Глубина от 1 до 8 бит
+    spinbox_depth.setValue(1)     # По умолчанию 1 бит
+    spinbox_depth.setSuffix(" бит")
+    
     algo_layout.addWidget(label_algo)
     algo_layout.addWidget(combo_algo)
+    algo_layout.addWidget(label_depth)
+    algo_layout.addWidget(spinbox_depth)
+    algo_layout.addStretch()  # Добавляем растяжение для красивого выравнивания
     layout.addLayout(algo_layout)
     
     # 2. Загрузка исходного файла
@@ -53,6 +66,7 @@ def create_main_layout(parent):
     
     # Сохранить виджеты в parent для доступа в events.py
     parent.combo_algo = combo_algo
+    parent.spinbox_depth = spinbox_depth
     parent.btn_load_cover = btn_load_cover
     parent.btn_load_wm = btn_load_wm
     parent.lineedit_wm = lineedit_wm

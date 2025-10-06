@@ -1,3 +1,8 @@
+import sys
+import os
+# Добавляем корневую папку проекта в sys.path для импорта модулей
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from gui.layout import create_main_layout
 from gui.events import connect_events

@@ -42,24 +42,30 @@ def embed_watermark(parent):
     try:
         # Загружаем исходное изображение
         cover = np.array(Image.open(cover_path))
-        params = {"depth": 1}
+        
+        # Получаем выбранную глубину из спиннера
+        depth = parent.spinbox_depth.value()
+        params = {"depth": depth}
 
         # Определяем тип секрета
         if text:  # Если введён текст
             secret = text
             parent.embedded_secret_type = "text"
             parent.embedded_secret_length = len(text.encode("utf-8"))
+            parent.embedded_depth = depth  # Сохраняем используемую глубину
         elif wm_path:  # Если выбран файл
             if os.path.splitext(wm_path)[1].lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
                 secret = np.array(Image.open(wm_path))
                 parent.embedded_secret_type = "image"
                 parent.embedded_secret_shape = secret.shape
+                parent.embedded_depth = depth  # Сохраняем используемую глубину
             else:
                 # Пробуем прочитать как текстовый файл
                 with open(wm_path, 'r', encoding='utf-8') as f:
                     secret = f.read()
                 parent.embedded_secret_type = "text"
                 parent.embedded_secret_length = len(secret.encode("utf-8"))
+                parent.embedded_depth = depth  # Сохраняем используемую глубину
 
         # Встраиваем с помощью LSB
         result = embed(cover, secret, params, method="lsb")
@@ -91,7 +97,10 @@ def extract_watermark(parent):
     try:
         # Загружаем стего-изображение
         stego_image = np.array(Image.open(stego_path))
-        params = {"depth": 1}
+        
+        # Используем сохранённую глубину или текущую из спиннера
+        depth = getattr(parent, "embedded_depth", parent.spinbox_depth.value())
+        params = {"depth": depth}
         
         # Добавляем нужные параметры в зависимости от типа секрета
         if secret_type == "text":
@@ -117,8 +126,9 @@ def extract_watermark(parent):
 def reset_gui(parent):
     parent.lineedit_wm.clear()
     parent.result_text.clear()
+    parent.spinbox_depth.setValue(1)  # Сброс глубины к значению по умолчанию
     # Очищаем пути и мета-информацию
     for attr in ['cover_path', 'wm_path', 'stego_path', 'embedded_secret_type', 
-                 'embedded_secret_length', 'embedded_secret_shape']:
+                 'embedded_secret_length', 'embedded_secret_shape', 'embedded_depth']:
         if hasattr(parent, attr):
             delattr(parent, attr)
