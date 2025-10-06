@@ -41,10 +41,9 @@ def connect_events(parent):
     parent.btn_load_wm.clicked.connect(lambda: load_wm_file(parent))
     parent.btn_embed.clicked.connect(lambda: embed_watermark(parent))
     parent.btn_extract.clicked.connect(lambda: extract_watermark(parent))
+    parent.btn_save_result.clicked.connect(lambda: save_stego_result(parent))
+    parent.btn_save_secret.clicked.connect(lambda: save_extracted_secret(parent))
     parent.btn_reset.clicked.connect(lambda: reset_gui(parent))
-    
-    # При вводе текста очищаем предпросмотр секретного изображения
-    parent.lineedit_wm.textChanged.connect(lambda text: on_text_input_changed(parent, text))
 
 def on_text_input_changed(parent, text):
     """
@@ -100,29 +99,18 @@ def load_and_display_image(image_path, label_widget, max_size=(250, 200)):
     try:
         # Загружаем изображение с помощью библиотеки PIL
         pil_image = Image.open(image_path)
-        
         # Конвертируем в RGB если нужно (для совместимости)
         if pil_image.mode != 'RGB':
             pil_image = pil_image.convert('RGB')
-        
-        # Масштабируем изображение с сохранением пропорций
-        pil_image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
         # Конвертируем PIL изображение в QPixmap для PyQt5
-        # Сначала сохраняем во временный буфер в памяти
         import io
         img_buffer = io.BytesIO()
         pil_image.save(img_buffer, format='PNG')
         img_buffer.seek(0)
-        
-        # Создаем QPixmap из данных в буфере
         pixmap = QPixmap()
         pixmap.loadFromData(img_buffer.getvalue())
-        
-        # Отображаем изображение в label и меняем стиль рамки
         label_widget.setPixmap(pixmap)
         label_widget.setStyleSheet("border: 2px solid #4CAF50;")  # Зеленая рамка для загруженного изображения
-        
         return True
     except Exception as e:
         print(f"Ошибка загрузки изображения: {e}")
@@ -173,28 +161,27 @@ def load_wm_file(parent):
     ========================================================================
     """
     fname, _ = QFileDialog.getOpenFileName(parent, "Выберите файл водяного знака", "", "Images (*.png *.jpg *.bmp);;Text files (*.txt);;All Files (*)")
-    if fname:  # Если файл выбран
-        parent.wm_path = fname  # Сохраняем путь к файлу
+    if fname:
+        parent.wm_path = fname
         parent.result_text.append(f"Загружен файл водяного знака: {fname}")
-        
-        # Очищаем текстовое поле, так как выбран файл (избегаем конфликта)
-        parent.lineedit_wm.clear()
-        
-        # Проверяем тип файла по расширению
-        if os.path.splitext(fname)[1].lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
-            # ========== ФАЙЛ ИЗОБРАЖЕНИЯ ==========
-            # Отображаем предпросмотр изображения
+        ext = os.path.splitext(fname)[1].lower()
+        if ext in [".jpg", ".jpeg", ".png", ".bmp"]:
             if load_and_display_image(fname, parent.secret_image_label):
                 parent.result_text.append("✅ Предпросмотр секретного изображения загружен")
             else:
                 parent.result_text.append("⚠️ Не удалось загрузить предпросмотр секретного изображения")
-        else:
-            # ========== ТЕКСТОВЫЙ ФАЙЛ ==========
-            # Для текстовых файлов показываем специальную иконку
+            parent.secret_type = "image"
+        elif ext == ".txt":
             parent.secret_image_label.clear()
-            parent.secret_image_label.setText("📄 Текстовый файл")
-            parent.secret_image_label.setStyleSheet("border: 2px solid #2196F3; color: #2196F3;")  # Синяя рамка для текста
+            parent.secret_image_label.setText("📄 Текстовый файл для встраивания")
+            parent.secret_image_label.setStyleSheet("border: 2px solid #2196F3; color: #2196F3;")
+            parent.secret_type = "text"
             parent.result_text.append("📄 Загружен текстовый файл")
+        else:
+            parent.secret_image_label.clear()
+            parent.secret_image_label.setText("❓ Неизвестный формат")
+            parent.secret_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+            parent.secret_type = None
 
 def embed_watermark(parent):
     """
@@ -221,21 +208,16 @@ def embed_watermark(parent):
     # ЭТАП 1: ПОЛУЧЕНИЕ И ПРОВЕРКА ВХОДНЫХ ДАННЫХ
     # ========================================================================
     
-    # Получаем пути к файлам (может быть None, если файл не выбран)
-    cover_path = getattr(parent, "cover_path", None)  # Исходное изображение
-    wm_path = getattr(parent, "wm_path", None)        # Файл водяного знака
-    text = parent.lineedit_wm.text().strip()          # Текст из поля ввода
-
+    cover_path = getattr(parent, "cover_path", None)
+    wm_path = getattr(parent, "wm_path", None)
+    secret_type = getattr(parent, "secret_type", None)
     # Проверяем, выбрано ли исходное изображение
     if not cover_path:
         QMessageBox.warning(parent, "Ошибка", "Не выбран исходный файл.")
         return
-        
-    # Проверяем, есть ли секретные данные (файл ИЛИ текст)
-    if not wm_path and not text:
+    if not wm_path or not secret_type:
         QMessageBox.warning(parent, "Ошибка", "Не выбран водяной знак (файл или текст).")
         return
-    
     try:
         # ====================================================================
         # ЭТАП 2: ЗАГРУЗКА И ПОДГОТОВКА ДАННЫХ
@@ -252,28 +234,17 @@ def embed_watermark(parent):
         # ЭТАП 3: ОПРЕДЕЛЕНИЕ ТИПА СЕКРЕТА И ЕГО ОБРАБОТКА
         # ====================================================================
         
-        if text:  # ========== СЕКРЕТ: ТЕКСТ ==========
-            secret = text
-            # Сохраняем метаинформацию для извлечения:
+        if secret_type == "text":
+            with open(wm_path, 'r', encoding='utf-8') as f:
+                secret = f.read()
             parent.embedded_secret_type = "text"
-            parent.embedded_secret_length = len(text.encode("utf-8"))  # Длина в байтах
+            parent.embedded_secret_length = len(secret.encode("utf-8"))
             parent.embedded_depth = depth
-            
-        elif wm_path:  # ========== СЕКРЕТ: ФАЙЛ ==========
-            # Определяем тип файла по расширению
-            if os.path.splitext(wm_path)[1].lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
-                # --- ФАЙЛ ИЗОБРАЖЕНИЯ ---
-                secret = np.array(Image.open(wm_path))  # Загружаем как массив пикселей
-                parent.embedded_secret_type = "image"
-                parent.embedded_secret_shape = secret.shape  # Размеры изображения (высота, ширина, каналы)
-                parent.embedded_depth = depth
-            else:
-                # --- ТЕКСТОВЫЙ ФАЙЛ ---
-                with open(wm_path, 'r', encoding='utf-8') as f:
-                    secret = f.read()
-                parent.embedded_secret_type = "text"
-                parent.embedded_secret_length = len(secret.encode("utf-8"))
-                parent.embedded_depth = depth
+        elif secret_type == "image":
+            secret = np.array(Image.open(wm_path))
+            parent.embedded_secret_type = "image"
+            parent.embedded_secret_shape = secret.shape
+            parent.embedded_depth = depth
 
         # ====================================================================
         # ЭТАП 4: ВСТРАИВАНИЕ СЕКРЕТА В ИЗОБРАЖЕНИЕ
@@ -286,13 +257,20 @@ def embed_watermark(parent):
         # ЭТАП 5: СОХРАНЕНИЕ РЕЗУЛЬТАТА
         # ====================================================================
         
-        # Сохраняем стего-изображение в файл
-        output_path = "stego_result.png"
-        Image.fromarray(result).save(output_path)
-        parent.result_text.append(f"✅ Встраивание успешно! Результат сохранён: {output_path}")
-        
-        # Сохраняем путь к стего-изображению для функции извлечения
-        parent.stego_path = output_path
+        # Сохраняем стего-изображение во временный путь, но не сохраняем автоматически
+        parent.stego_result = result
+        parent.result_text.append(f"✅ Встраивание успешно! Результат готов для предпросмотра и сохранения.")
+        parent.btn_save_result.setEnabled(True)
+        # Показываем превью стегоизображения (всегда изображение)
+        img = Image.fromarray(result)
+        import io
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        pixmap = QPixmap()
+        pixmap.loadFromData(buf.getvalue())
+        parent.stego_image_label.setPixmap(pixmap)
+        parent.stego_image_label.setStyleSheet("border: 2px solid #4CAF50;")
         
     except Exception as exc:
         # Обработка ошибок (неправильный формат файла, нехватка места и т.д.)
@@ -324,67 +302,52 @@ def extract_watermark(parent):
     # ========================================================================
     
     # Ищем файл для извлечения: сначала stego_result.png, потом исходный файл
-    stego_path = getattr(parent, "stego_path", None) or getattr(parent, "cover_path", None)
-    
-    if not stego_path:
-        QMessageBox.warning(parent, "Ошибка", "Не выбран файл для извлечения.")
-        return
-    
-    # Проверяем наличие метаинформации о встроенном секрете
+    stego_result = getattr(parent, "stego_result", None)
     secret_type = getattr(parent, "embedded_secret_type", None)
-    if not secret_type:
-        QMessageBox.warning(parent, "Ошибка", "Неизвестно, что было встроено. Сначала выполните встраивание.")
+    if stego_result is None or not secret_type:
+        QMessageBox.warning(parent, "Ошибка", "Нет стего-результата для извлечения.")
         return
-    
     try:
         # ====================================================================
         # ЭТАП 2: ЗАГРУЗКА СТЕГО-ИЗОБРАЖЕНИЯ
         # ====================================================================
-        
-        # Загружаем стего-изображение как массив пикселей
-        stego_image = np.array(Image.open(stego_path))
-        
+        stego_image = stego_result
         # ====================================================================
         # ЭТАП 3: ПОДГОТОВКА ПАРАМЕТРОВ ДЛЯ ИЗВЛЕЧЕНИЯ
         # ====================================================================
-        
-        # Используем сохранённую глубину или текущую из интерфейса
         depth = getattr(parent, "embedded_depth", parent.spinbox_depth.value())
         params = {"depth": depth}
-        
-        # Добавляем специфичные параметры в зависимости от типа секрета
         if secret_type == "text":
-            # ========== ИЗВЛЕЧЕНИЕ ТЕКСТА ==========
-            # Для текста нужно знать длину в байтах
-            params["length"] = getattr(parent, "embedded_secret_length", 10)  # fallback на 10 байт
+            params["length"] = getattr(parent, "embedded_secret_length", 10)
         elif secret_type == "image":
-            # ========== ИЗВЛЕЧЕНИЕ ИЗОБРАЖЕНИЯ ==========
-            # Для изображения нужно знать размеры (высота, ширина, каналы)
-            params["secret_shape"] = getattr(parent, "embedded_secret_shape", (64, 64, 3))  # fallback
-        
+            params["secret_shape"] = getattr(parent, "embedded_secret_shape", (64, 64, 3))
         # ====================================================================
         # ЭТАП 4: ИЗВЛЕЧЕНИЕ СЕКРЕТНЫХ ДАННЫХ
         # ====================================================================
-        
-        # Вызываем алгоритм извлечения (из модуля watermark.extraction)
         extracted = extract(stego_image, params, method="lsb")
-        
         # ====================================================================
         # ЭТАП 5: ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
         # ====================================================================
-        
         if isinstance(extracted, str):
-            # ========== РЕЗУЛЬТАТ: ТЕКСТ ==========
-            parent.result_text.append(f"🔍 Извлечённый текст: '{extracted}'")
+            parent.extracted_secret = extracted
+            parent.result_text.append(f"🔍 Извлечённый текст готов для предпросмотра и сохранения.")
+            parent.restored_image_label.clear()
+            parent.restored_image_label.setText("📄 Восстановленный текст")
+            parent.restored_image_label.setStyleSheet("border: 2px solid #2196F3; color: #2196F3;")
         else:
-            # ========== РЕЗУЛЬТАТ: ИЗОБРАЖЕНИЕ ==========
-            # Сохраняем извлечённое изображение в файл
-            output_path = "extracted_secret.png"
-            Image.fromarray(extracted).save(output_path)
-            parent.result_text.append(f"🔍 Извлечённое изображение сохранено: {output_path}")
-            
+            parent.extracted_secret = extracted
+            parent.result_text.append(f"🔍 Восстановленное изображение готов для предпросмотра и сохранения.")
+            img = Image.fromarray(extracted)
+            import io
+            buf = io.BytesIO()
+            img.save(buf, format='PNG')
+            buf.seek(0)
+            pixmap = QPixmap()
+            pixmap.loadFromData(buf.getvalue())
+            parent.restored_image_label.setPixmap(pixmap)
+            parent.restored_image_label.setStyleSheet("border: 2px solid #4CAF50;")
+        parent.btn_save_secret.setEnabled(True)
     except Exception as exc:
-        # Обработка ошибок (поврежденный файл, неправильные параметры и т.д.)
         parent.result_text.append(f"❌ Ошибка извлечения: {exc}")
 
 def reset_gui(parent):
@@ -409,39 +372,55 @@ def reset_gui(parent):
     # ОЧИСТКА ПОЛЕЙ ВВОДА И НАСТРОЕК
     # ====================================================================
     
-    parent.lineedit_wm.clear()           # Очищаем поле ввода текста
-    parent.result_text.clear()           # Очищаем область результатов
-    parent.spinbox_depth.setValue(1)     # Возвращаем глубину к значению по умолчанию
-    
-    # ====================================================================
-    # СБРОС ПРЕДПРОСМОТРОВ ИЗОБРАЖЕНИЙ
-    # ====================================================================
-    
-    # Очищаем предпросмотр исходного изображения
+    parent.result_text.clear()
+    parent.spinbox_depth.setValue(1)
     parent.cover_image_label.clear()
     parent.cover_image_label.setText("Изображение не загружено")
     parent.cover_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
-    
-    # Очищаем предпросмотр секретного изображения
-    parent.secret_image_label.clear() 
-    parent.secret_image_label.setText("Изображение не загружено")
+    parent.secret_image_label.clear()
+    parent.secret_image_label.setText("Файл не загружен")
     parent.secret_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
-    
-    # ====================================================================
-    # УДАЛЕНИЕ СОХРАНЁННЫХ ДАННЫХ И МЕТАИНФОРМАЦИИ
-    # ====================================================================
-    
-    # Удаляем все сохранённые атрибуты (пути к файлам, параметры встраивания)
+    parent.stego_image_label.clear()
+    parent.stego_image_label.setText("Нет результата")
+    parent.stego_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    parent.restored_image_label.clear()
+    parent.restored_image_label.setText("Нет результата")
+    parent.restored_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    parent.btn_save_result.setEnabled(False)
+    parent.btn_save_secret.setEnabled(False)
     attributes_to_clear = [
-        'cover_path',              # Путь к исходному изображению
-        'wm_path',                 # Путь к файлу водяного знака
-        'stego_path',              # Путь к стего-изображению
-        'embedded_secret_type',    # Тип встроенного секрета ("text" или "image")
-        'embedded_secret_length',  # Длина текста в байтах
-        'embedded_secret_shape',   # Размеры встроенного изображения
-        'embedded_depth'           # Использованная глубина встраивания
+        'cover_path', 'wm_path', 'stego_result', 'embedded_secret_type', 'embedded_secret_length', 'embedded_secret_shape', 'embedded_depth', 'secret_type', 'extracted_secret'
     ]
-    
     for attr in attributes_to_clear:
-        if hasattr(parent, attr):  # Проверяем, существует ли атрибут
-            delattr(parent, attr)  # Удаляем атрибут
+        if hasattr(parent, attr):
+            delattr(parent, attr)
+
+# ========== Новый обработчик: сохранить стего-результат ==========
+def save_stego_result(parent):
+    result = getattr(parent, 'stego_result', None)
+    if result is None:
+        QMessageBox.warning(parent, "Ошибка", "Нет результата для сохранения.")
+        return
+    fname, _ = QFileDialog.getSaveFileName(parent, "Сохранить стего-изображение", "stego_result.png", "Images (*.png *.jpg *.bmp)")
+    if fname:
+        Image.fromarray(result).save(fname)
+        parent.result_text.append(f"💾 Стего-изображение сохранено: {fname}")
+
+# ========== Новый обработчик: сохранить восстановленный секрет ==========
+def save_extracted_secret(parent):
+    secret = getattr(parent, 'extracted_secret', None)
+    secret_type = getattr(parent, 'embedded_secret_type', None)
+    if secret is None or secret_type is None:
+        QMessageBox.warning(parent, "Ошибка", "Нет восстановленного секрета для сохранения.")
+        return
+    if secret_type == "image":
+        fname, _ = QFileDialog.getSaveFileName(parent, "Сохранить восстановленное изображение", "extracted_secret.png", "Images (*.png *.jpg *.bmp)")
+        if fname:
+            Image.fromarray(secret).save(fname)
+            parent.result_text.append(f"💾 Восстановленное изображение сохранено: {fname}")
+    elif secret_type == "text":
+        fname, _ = QFileDialog.getSaveFileName(parent, "Сохранить восстановленный текст", "extracted_secret.txt", "Text files (*.txt)")
+        if fname:
+            with open(fname, 'w', encoding='utf-8') as f:
+                f.write(secret)
+            parent.result_text.append(f"💾 Восстановленный текст сохранён: {fname}")

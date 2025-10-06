@@ -49,9 +49,11 @@ def create_main_layout(parent):
     """
     # Создаем главный контейнер - это основа всего интерфейса
     main_widget = QWidget(parent)
-    
+    main_widget.setSizePolicy(main_widget.sizePolicy().Expanding, main_widget.sizePolicy().Expanding)
     # Создаем вертикальную компоновку - все элементы будут располагаться сверху вниз
     layout = QVBoxLayout(main_widget)
+    layout.setContentsMargins(10, 10, 10, 10)
+    layout.setSpacing(10)
     
     # ========================================================================
     # СЕКЦИЯ 1: ВЫБОР АЛГОРИТМА И НАСТРОЕК
@@ -93,67 +95,97 @@ def create_main_layout(parent):
     # - Левый столбец: кнопка загрузки исходного изображения и его предпросмотр
     # - Правый столбец: кнопка загрузки водяного знака (или ввода текста) и его предпросмотр
 
-    upload_preview_layout = QHBoxLayout()  # Основная горизонтальная компоновка
-    upload_preview_layout_grid = QGridLayout()  # Основная горизонтальная компоновка
 
-    # Исходное изображение
+    upload_preview_layout_grid = QGridLayout()
 
-    # Кнопка загрузки исходного изображения
+    # --- 1 колонка: Исходное изображение ---
     btn_load_cover = QPushButton("Загрузить исходное изображение")
     upload_preview_layout_grid.addWidget(btn_load_cover, 0, 0)
 
-    # Предпросмотр исходного изображения
     cover_preview_frame = QFrame()
     cover_preview_frame.setFrameStyle(QFrame.StyledPanel)
     cover_preview_layout = QVBoxLayout(cover_preview_frame)
-
     cover_preview_label = QLabel("Исходное изображение")
     cover_preview_label.setAlignment(Qt.AlignCenter)
     cover_preview_layout.addWidget(cover_preview_label)
-
     cover_image_label = QLabel("Изображение не загружено")
     cover_image_label.setAlignment(Qt.AlignCenter)
-    cover_image_label.setMinimumSize(200, 150)
-    cover_image_label.setMaximumSize(250, 200)
     cover_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
-    cover_image_label.setScaledContents(False)
+    cover_image_label.setScaledContents(True)
+    from PyQt5.QtWidgets import QSizePolicy
+    cover_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     cover_preview_layout.addWidget(cover_image_label)
-
     upload_preview_layout_grid.addWidget(cover_preview_frame, 1, 0)
-    
-    # ПРАВАЯ ЧАСТЬ: Водяной знак
 
-    #отдельный бокс под загрузку водяного знака
+    # --- 2 колонка: Водяной знак ---
     wm_upload_layout = QVBoxLayout()
-    # Кнопка загрузки водяного знака
-    btn_load_wm = QPushButton("Загрузить файл водяного знака")
+    btn_load_wm = QPushButton("Загрузить файл водяного знака / текста")
     wm_upload_layout.addWidget(btn_load_wm)
-
-    # Поле для ввода текста (альтернатива загрузке файла)
-    lineedit_wm = QLineEdit()
-    lineedit_wm.setPlaceholderText("Введите текст для встраивания...")
-    wm_upload_layout.addWidget(lineedit_wm)
-
+    # Информационная строка вместо поля ввода текста
+    info_label = QLabel("Можно загрузить изображение \nили .txt файл для встраивания текста.")
+    info_label.setStyleSheet("color: #888; font-size: 12px;")
+    wm_upload_layout.addWidget(info_label)
     upload_preview_layout_grid.addLayout(wm_upload_layout, 0, 1)
 
-    # Предпросмотр водяного знака
     secret_preview_frame = QFrame()
     secret_preview_frame.setFrameStyle(QFrame.StyledPanel)
     secret_preview_layout = QVBoxLayout(secret_preview_frame)
-
-    secret_preview_label = QLabel("Секретное изображение")
+    secret_preview_label = QLabel("Секретное изображение/текст")
     secret_preview_label.setAlignment(Qt.AlignCenter)
     secret_preview_layout.addWidget(secret_preview_label)
-
-    secret_image_label = QLabel("Изображение не загружено")
+    secret_image_label = QLabel("Файл не загружен")
     secret_image_label.setAlignment(Qt.AlignCenter)
-    secret_image_label.setMinimumSize(200, 150)
-    secret_image_label.setMaximumSize(250, 200)
     secret_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
     secret_image_label.setScaledContents(True)
+    secret_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     secret_preview_layout.addWidget(secret_image_label)
-
     upload_preview_layout_grid.addWidget(secret_preview_frame, 1, 1)
+
+    # --- 3 колонка: Встраивание и результат ---
+    embed_layout = QVBoxLayout()
+    btn_embed = QPushButton("🔒 Встроить")
+    btn_save_result = QPushButton("💾 Сохранить результат")
+    btn_save_result.setEnabled(False)  # Неактивна, пока нет результата
+    embed_layout.addWidget(btn_embed)
+    embed_layout.addWidget(btn_save_result)
+    upload_preview_layout_grid.addLayout(embed_layout, 0, 2)
+
+    stego_preview_frame = QFrame()
+    stego_preview_frame.setFrameStyle(QFrame.StyledPanel)
+    stego_preview_layout = QVBoxLayout(stego_preview_frame)
+    stego_preview_label = QLabel("Стегоизображение/текст")
+    stego_preview_label.setAlignment(Qt.AlignCenter)
+    stego_preview_layout.addWidget(stego_preview_label)
+    stego_image_label = QLabel("Нет результата")
+    stego_image_label.setAlignment(Qt.AlignCenter)
+    stego_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    stego_image_label.setScaledContents(True)
+    stego_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    stego_preview_layout.addWidget(stego_image_label)
+    upload_preview_layout_grid.addWidget(stego_preview_frame, 1, 2)
+
+    # --- 4 колонка: Извлечение и восстановленный секрет ---
+    extract_layout = QVBoxLayout()
+    btn_extract = QPushButton("🔍 Извлечь")
+    btn_save_secret = QPushButton("💾 Сохранить восстановленный секрет")
+    btn_save_secret.setEnabled(False)
+    extract_layout.addWidget(btn_extract)
+    extract_layout.addWidget(btn_save_secret)
+    upload_preview_layout_grid.addLayout(extract_layout, 0, 3)
+
+    restored_preview_frame = QFrame()
+    restored_preview_frame.setFrameStyle(QFrame.StyledPanel)
+    restored_preview_layout = QVBoxLayout(restored_preview_frame)
+    restored_preview_label = QLabel("Восстановленный секрет (извлечён)")
+    restored_preview_label.setAlignment(Qt.AlignCenter)
+    restored_preview_layout.addWidget(restored_preview_label)
+    restored_image_label = QLabel("Нет результата")
+    restored_image_label.setAlignment(Qt.AlignCenter)
+    restored_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    restored_image_label.setScaledContents(True)
+    restored_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    restored_preview_layout.addWidget(restored_image_label)
+    upload_preview_layout_grid.addWidget(restored_preview_frame, 1, 3)
 
     layout.addLayout(upload_preview_layout_grid)
     
@@ -163,22 +195,8 @@ def create_main_layout(parent):
     # ========================================================================
     # Три главные кнопки для выполнения операций стеганографии
     
-    actions_layout = QHBoxLayout()  # Размещаем кнопки горизонтально
-    
-    # Кнопка встраивания водяного знака
-    btn_embed = QPushButton("🔒 Встроить")
-    # Эта кнопка запускает процесс встраивания секрета в исходное изображение
-    
-    # Кнопка извлечения водяного знака
-    btn_extract = QPushButton("🔍 Извлечь")
-    # Эта кнопка извлекает секрет из стего-изображения
-    
-    # Кнопка сброса всех настроек
+    actions_layout = QHBoxLayout()
     btn_reset = QPushButton("🗑️ Сбросить")
-    # Очищает все поля, сбрасывает настройки и предпросмотры
-    
-    actions_layout.addWidget(btn_embed)
-    actions_layout.addWidget(btn_extract)
     actions_layout.addWidget(btn_reset)
     layout.addLayout(actions_layout)
     
@@ -209,17 +227,21 @@ def create_main_layout(parent):
     # - Изменять содержимое текстовых областей
     # - Обновлять изображения в окнах предпросмотра
     
-    parent.combo_algo = combo_algo           # Выбор алгоритма
-    parent.spinbox_depth = spinbox_depth     # Поле глубины встраивания
-    parent.btn_load_cover = btn_load_cover   # Кнопка загрузки исходного изображения
-    parent.btn_load_wm = btn_load_wm         # Кнопка загрузки водяного знака
-    parent.lineedit_wm = lineedit_wm         # Поле ввода текста
-    parent.btn_embed = btn_embed             # Кнопка встраивания
-    parent.btn_extract = btn_extract         # Кнопка извлечения
-    parent.btn_reset = btn_reset             # Кнопка сброса
-    parent.result_text = result_text         # Область вывода результатов
-    parent.cover_image_label = cover_image_label     # Окно предпросмотра исходного изображения
-    parent.secret_image_label = secret_image_label   # Окно предпросмотра секретного изображения
-    
+    parent.combo_algo = combo_algo
+    parent.spinbox_depth = spinbox_depth
+    parent.btn_load_cover = btn_load_cover
+    parent.btn_load_wm = btn_load_wm
+    parent.info_label = info_label
+    parent.btn_embed = btn_embed
+    parent.btn_save_result = btn_save_result
+    parent.btn_extract = btn_extract
+    parent.btn_save_secret = btn_save_secret
+    parent.btn_reset = btn_reset
+    parent.result_text = result_text
+    parent.cover_image_label = cover_image_label
+    parent.secret_image_label = secret_image_label
+    parent.stego_image_label = stego_image_label
+    parent.restored_image_label = restored_image_label
+
     # Возвращаем готовый виджет с полным интерфейсом
     return main_widget
