@@ -1,8 +1,11 @@
 # gui/layout.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QComboBox, QTextEdit, QFileDialog, QLineEdit, QSpinBox
+    QComboBox, QTextEdit, QFileDialog, QLineEdit, QSpinBox,
+    QScrollArea, QFrame
 )
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 
 def create_main_layout(parent):
     main_widget = QWidget(parent)
@@ -47,7 +50,46 @@ def create_main_layout(parent):
     wm_layout.addWidget(lineedit_wm)
     layout.addLayout(wm_layout)
     
-    # 4. Кнопки действий
+    # 4. Предпросмотр загруженных изображений
+    preview_layout = QHBoxLayout()
+    
+    # Предпросмотр исходного изображения
+    cover_preview_frame = QFrame()
+    cover_preview_frame.setFrameStyle(QFrame.StyledPanel)
+    cover_preview_layout = QVBoxLayout(cover_preview_frame)
+    cover_preview_label = QLabel("Исходное изображение")
+    cover_preview_label.setAlignment(Qt.AlignCenter)
+    cover_preview_layout.addWidget(cover_preview_label)
+    
+    cover_image_label = QLabel("Изображение не загружено")
+    cover_image_label.setAlignment(Qt.AlignCenter)
+    cover_image_label.setMinimumSize(200, 150)
+    cover_image_label.setMaximumSize(250, 200)
+    cover_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    cover_image_label.setScaledContents(True)
+    cover_preview_layout.addWidget(cover_image_label)
+    
+    # Предпросмотр секретного изображения  
+    secret_preview_frame = QFrame()
+    secret_preview_frame.setFrameStyle(QFrame.StyledPanel)
+    secret_preview_layout = QVBoxLayout(secret_preview_frame)
+    secret_preview_label = QLabel("Секретное изображение")
+    secret_preview_label.setAlignment(Qt.AlignCenter)
+    secret_preview_layout.addWidget(secret_preview_label)
+    
+    secret_image_label = QLabel("Изображение не загружено")
+    secret_image_label.setAlignment(Qt.AlignCenter)
+    secret_image_label.setMinimumSize(200, 150)
+    secret_image_label.setMaximumSize(250, 200)
+    secret_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    secret_image_label.setScaledContents(True)
+    secret_preview_layout.addWidget(secret_image_label)
+    
+    preview_layout.addWidget(cover_preview_frame)
+    preview_layout.addWidget(secret_preview_frame)
+    layout.addLayout(preview_layout)
+    
+    # 5. Кнопки действий
     actions_layout = QHBoxLayout()
     btn_embed = QPushButton("🔒 Встроить")
     btn_extract = QPushButton("🔍 Извлечь")
@@ -57,7 +99,7 @@ def create_main_layout(parent):
     actions_layout.addWidget(btn_reset)
     layout.addLayout(actions_layout)
     
-    # 5. Вывод результата
+    # 6. Вывод результата
     result_label = QLabel("Результат:")
     result_text = QTextEdit()
     result_text.setReadOnly(True)
@@ -74,5 +116,7 @@ def create_main_layout(parent):
     parent.btn_extract = btn_extract
     parent.btn_reset = btn_reset
     parent.result_text = result_text
+    parent.cover_image_label = cover_image_label
+    parent.secret_image_label = secret_image_label
     
     return main_widget
