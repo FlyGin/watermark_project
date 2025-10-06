@@ -45,6 +45,55 @@ def connect_events(parent):
     parent.btn_save_secret.clicked.connect(lambda: save_extracted_secret(parent))
     parent.btn_reset.clicked.connect(lambda: reset_gui(parent))
 
+    # Обработчик клика по превью секретного изображения
+    parent.secret_image_label.mousePressEvent = lambda event: on_secret_preview_clicked(parent, event)
+    # Обработчик клика по превью восстановленного секрета
+    parent.restored_image_label.mousePressEvent = lambda event: on_restored_secret_preview_clicked(parent, event)
+import tempfile
+def on_restored_secret_preview_clicked(parent, event):
+    """
+    Обработчик клика по QLabel превью восстановленного секрета.
+    Если секрет — текст, сохраняет его во временный txt-файл и открывает.
+    """
+    secret = getattr(parent, "extracted_secret", None)
+    secret_type = getattr(parent, "embedded_secret_type", None)
+    if secret_type == "text" and secret:
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8") as tmp:
+                tmp.write(secret)
+                tmp_path = tmp.name
+            import sys
+            if sys.platform.startswith('win'):
+                os.startfile(tmp_path)
+            elif sys.platform.startswith('darwin'):
+                import subprocess
+                subprocess.call(['open', tmp_path])
+            else:
+                import subprocess
+                subprocess.call(['xdg-open', tmp_path])
+        except Exception as e:
+            QMessageBox.warning(parent, "Ошибка", f"Не удалось открыть файл: {e}")
+
+def on_secret_preview_clicked(parent, event):
+    """
+    Обработчик клика по QLabel превью секретного изображения.
+    Если выбран секрет типа текст, показывает заглушку (например, QMessageBox).
+    """
+    import subprocess
+    import sys
+    secret_type = getattr(parent, "secret_type", None)
+    wm_path = getattr(parent, "wm_path", None)
+    if secret_type == "text" and wm_path:
+        try:
+            if sys.platform.startswith('win'):
+                os.startfile(wm_path)
+            elif sys.platform.startswith('darwin'):
+                subprocess.call(['open', wm_path])
+            else:
+                subprocess.call(['xdg-open', wm_path])
+        except Exception as e:
+            QMessageBox.warning(parent, "Ошибка", f"Не удалось открыть файл: {e}")
+
 def on_text_input_changed(parent, text):
     """
     ========================================================================
