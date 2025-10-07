@@ -4,4 +4,6 @@
 # Тестовые данные
 /tests/test_data/
 tests/integration_tests/lsb_tests/results/text/
-
+/build
+/dist
+/WatermarkProject.spec
