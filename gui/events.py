@@ -44,12 +44,48 @@ def connect_events(parent):
     parent.btn_save_result.clicked.connect(lambda: save_stego_result(parent))
     parent.btn_save_secret.clicked.connect(lambda: save_extracted_secret(parent))
     parent.btn_reset.clicked.connect(lambda: reset_gui(parent))
+    
+    # Обработчик смены алгоритма
+    parent.combo_algo.currentTextChanged.connect(lambda: on_algorithm_changed(parent))
 
     # Обработчик клика по превью секретного изображения
     parent.secret_image_label.mousePressEvent = lambda event: on_secret_preview_clicked(parent, event)
     # Обработчик клика по превью восстановленного секрета
     parent.restored_image_label.mousePressEvent = lambda event: on_restored_secret_preview_clicked(parent, event)
 import tempfile
+def on_algorithm_changed(parent):
+    """
+    ========================================================================
+    ОБРАБОТЧИК СМЕНЫ АЛГОРИТМА
+    ========================================================================
+    Эта функция вызывается при изменении выбора алгоритма в combo_algo.
+    Показывает/скрывает соответствующие параметры для выбранного алгоритма.
+    
+    LSB параметры: depth (глубина)
+    DCT параметры: strength (сила), block_size (размер блока)
+    ========================================================================
+    """
+    algorithm = parent.combo_algo.currentText()
+    
+    if algorithm == "LSB":
+        # Показываем параметры LSB
+        parent.label_depth.setVisible(True)
+        parent.spinbox_depth.setVisible(True)
+        # Скрываем параметры DCT
+        parent.label_strength.setVisible(False)
+        parent.spinbox_strength.setVisible(False)
+        parent.label_block_size.setVisible(False)
+        parent.spinbox_block_size.setVisible(False)
+    elif algorithm == "DCT":
+        # Скрываем параметры LSB
+        parent.label_depth.setVisible(False)
+        parent.spinbox_depth.setVisible(False)
+        # Показываем параметры DCT
+        parent.label_strength.setVisible(True)
+        parent.spinbox_strength.setVisible(True)
+        parent.label_block_size.setVisible(True)
+        parent.spinbox_block_size.setVisible(True)
+
 def on_restored_secret_preview_clicked(parent, event):
     """
     Обработчик клика по QLabel превью восстановленного секрета.
@@ -275,9 +311,19 @@ def embed_watermark(parent):
         # Загружаем исходное изображение как массив пикселей
         cover = np.array(Image.open(cover_path))
         
+        # Получаем выбранный алгоритм
+        algorithm = parent.combo_algo.currentText().lower()
+        
         # Получаем параметры алгоритма из интерфейса
-        depth = parent.spinbox_depth.value()  # Глубина встраивания (1-8 бит)
-        params = {"depth": depth}
+        if algorithm == "lsb":
+            depth = parent.spinbox_depth.value()  # Глубина встраивания (1-8 бит)
+            params = {"depth": depth}
+        elif algorithm == "dct":
+            strength = parent.spinbox_strength.value()  # Сила встраивания (5-50)
+            block_size = parent.spinbox_block_size.value()  # Размер блока (4-16)
+            params = {"strength": strength, "block_size": block_size}
+        else:
+            raise ValueError(f"Неизвестный алгоритм: {algorithm}")
 
         # ====================================================================
         # ЭТАП 3: ОПРЕДЕЛЕНИЕ ТИПА СЕКРЕТА И ЕГО ОБРАБОТКА
@@ -288,19 +334,56 @@ def embed_watermark(parent):
                 secret = f.read()
             parent.embedded_secret_type = "text"
             parent.embedded_secret_length = len(secret.encode("utf-8"))
-            parent.embedded_depth = depth
+            if algorithm == "lsb":
+                parent.embedded_depth = depth
+            elif algorithm == "dct":
+                parent.embedded_strength = strength
+                parent.embedded_block_size = block_size
         elif secret_type == "image":
             secret = np.array(Image.open(wm_path))
             parent.embedded_secret_type = "image"
-            parent.embedded_secret_shape = secret.shape
-            parent.embedded_depth = depth
+            parent.embedded_secret_shape = secret.shape  # Исходный размер
+            parent.embedded_original_secret_shape = secret.shape  # Для восстановления после масштабирования
+            if algorithm == "lsb":
+                parent.embedded_depth = depth
+            elif algorithm == "dct":
+                parent.embedded_strength = strength
+                parent.embedded_block_size = block_size
+
+        # Сохраняем используемый алгоритм
+        parent.embedded_algorithm = algorithm
 
         # ====================================================================
         # ЭТАП 4: ВСТРАИВАНИЕ СЕКРЕТА В ИЗОБРАЖЕНИЕ
         # ====================================================================
         
+        # Перехватываем вывод для информирования о масштабировании
+        import sys
+        from io import StringIO
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        
         # Вызываем алгоритм встраивания (из модуля watermark.embedding)
-        result = embed(cover, secret, params, method="lsb")
+        result = embed(cover, secret, params, method=algorithm)
+        
+        # Получаем вывод о масштабировании (если было)
+        output = sys.stdout.getvalue()
+        sys.stdout = old_stdout
+        
+        # Если было масштабирование, выводим предупреждение
+        if output:
+            parent.result_text.append(output.strip())
+            # Обновляем сохранённую форму секрета на реальную (после масштабирования)
+            if secret_type == "image" and algorithm == "dct":
+                # После масштабирования нужно обновить embedded_secret_shape
+                # Получим информацию из вывода
+                import re
+                match = re.search(r'→ \(([^)]+)\)', output)
+                if match:
+                    shape_str = match.group(1)
+                    shape_parts = [int(x.strip()) for x in shape_str.split(',')]
+                    parent.embedded_secret_shape = tuple(shape_parts)
+                    parent.result_text.append(f"ℹ️ Размер встроенного секрета обновлён: {parent.embedded_secret_shape}")
         
         # ====================================================================
         # ЭТАП 5: СОХРАНЕНИЕ РЕЗУЛЬТАТА
@@ -361,19 +444,33 @@ def extract_watermark(parent):
         # ЭТАП 2: ЗАГРУЗКА СТЕГО-ИЗОБРАЖЕНИЯ
         # ====================================================================
         stego_image = stego_result
+        
+        # Получаем используемый алгоритм
+        algorithm = getattr(parent, "embedded_algorithm", "lsb")
+        
         # ====================================================================
         # ЭТАП 3: ПОДГОТОВКА ПАРАМЕТРОВ ДЛЯ ИЗВЛЕЧЕНИЯ
         # ====================================================================
-        depth = getattr(parent, "embedded_depth", parent.spinbox_depth.value())
-        params = {"depth": depth}
+        if algorithm == "lsb":
+            depth = getattr(parent, "embedded_depth", parent.spinbox_depth.value())
+            params = {"depth": depth}
+        elif algorithm == "dct":
+            strength = getattr(parent, "embedded_strength", parent.spinbox_strength.value())
+            block_size = getattr(parent, "embedded_block_size", parent.spinbox_block_size.value())
+            params = {"strength": strength, "block_size": block_size}
+        else:
+            raise ValueError(f"Неизвестный алгоритм: {algorithm}")
+        
         if secret_type == "text":
             params["length"] = getattr(parent, "embedded_secret_length", 10)
         elif secret_type == "image":
             params["secret_shape"] = getattr(parent, "embedded_secret_shape", (64, 64, 3))
+        
         # ====================================================================
         # ЭТАП 4: ИЗВЛЕЧЕНИЕ СЕКРЕТНЫХ ДАННЫХ
         # ====================================================================
-        extracted = extract(stego_image, params, method="lsb")
+        extracted = extract(stego_image, params, method=algorithm)
+        
         # ====================================================================
         # ЭТАП 5: ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
         # ====================================================================
@@ -384,6 +481,12 @@ def extract_watermark(parent):
             parent.restored_image_label.setText("📄 Восстановленный текст")
             parent.restored_image_label.setStyleSheet("border: 2px solid #2196F3; color: #2196F3;")
         else:
+            # Проверяем, было ли масштабирование при встраивании
+            original_shape = getattr(parent, "embedded_original_secret_shape", None)
+            if original_shape and extracted.shape != original_shape:
+                parent.result_text.append(f"ℹ️ Восстановленное изображение: {extracted.shape} (было масштабировано из {original_shape})")
+                parent.result_text.append(f"💡 Совет: при сохранении можно масштабировать обратно к исходному размеру")
+            
             parent.extracted_secret = extracted
             parent.result_text.append(f"🔍 Восстановленное изображение готов для предпросмотра и сохранения.")
             img = Image.fromarray(extracted)
@@ -423,6 +526,9 @@ def reset_gui(parent):
     
     parent.result_text.clear()
     parent.spinbox_depth.setValue(1)
+    parent.spinbox_strength.setValue(15)
+    parent.spinbox_block_size.setValue(8)
+    parent.combo_algo.setCurrentIndex(0)  # Вернуть на LSB
     parent.cover_image_label.clear()
     parent.cover_image_label.setText("Изображение не загружено")
     parent.cover_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
@@ -438,7 +544,10 @@ def reset_gui(parent):
     parent.btn_save_result.setEnabled(False)
     parent.btn_save_secret.setEnabled(False)
     attributes_to_clear = [
-        'cover_path', 'wm_path', 'stego_result', 'embedded_secret_type', 'embedded_secret_length', 'embedded_secret_shape', 'embedded_depth', 'secret_type', 'extracted_secret'
+        'cover_path', 'wm_path', 'stego_result', 'embedded_secret_type', 
+        'embedded_secret_length', 'embedded_secret_shape', 'embedded_depth', 
+        'embedded_strength', 'embedded_block_size', 'embedded_algorithm',
+        'embedded_original_secret_shape', 'secret_type', 'extracted_secret'
     ]
     for attr in attributes_to_clear:
         if hasattr(parent, attr):
@@ -463,10 +572,38 @@ def save_extracted_secret(parent):
         QMessageBox.warning(parent, "Ошибка", "Нет восстановленного секрета для сохранения.")
         return
     if secret_type == "image":
+        # Проверяем, было ли масштабирование
+        original_shape = getattr(parent, 'embedded_original_secret_shape', None)
+        should_upscale = False
+        
+        if original_shape and secret.shape != original_shape:
+            from PyQt5.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                parent, 
+                'Масштабирование', 
+                f'Изображение было масштабировано при встраивании.\n'
+                f'Исходный размер: {original_shape}\n'
+                f'Текущий размер: {secret.shape}\n\n'
+                f'Масштабировать обратно к исходному размеру?',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            should_upscale = (reply == QMessageBox.Yes)
+        
         fname, _ = QFileDialog.getSaveFileName(parent, "Сохранить восстановленное изображение", "extracted_secret.png", "Images (*.png *.jpg *.bmp)")
         if fname:
-            Image.fromarray(secret).save(fname)
-            parent.result_text.append(f"💾 Восстановленное изображение сохранено: {fname}")
+            if should_upscale and original_shape:
+                # Масштабируем обратно
+                img = Image.fromarray(secret)
+                if len(original_shape) == 3:
+                    img = img.resize((original_shape[1], original_shape[0]), Image.LANCZOS)
+                else:
+                    img = img.resize((original_shape[1], original_shape[0]), Image.LANCZOS)
+                img.save(fname)
+                parent.result_text.append(f"💾 Восстановленное изображение масштабировано и сохранено: {fname}")
+            else:
+                Image.fromarray(secret).save(fname)
+                parent.result_text.append(f"💾 Восстановленное изображение сохранено: {fname}")
     elif secret_type == "text":
         fname, _ = QFileDialog.getSaveFileName(parent, "Сохранить восстановленный текст", "extracted_secret.txt", "Text files (*.txt)")
         if fname:

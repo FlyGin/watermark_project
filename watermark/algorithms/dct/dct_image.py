@@ -19,11 +19,6 @@ def embed_image(image: np.ndarray, secret_img: np.ndarray, params: dict) -> np.n
     strength = params.get("strength", 15)
     block_size = params.get("block_size", 8)
     
-    # Преобразуем секретное изображение в биты
-    flat_secret = secret_img.flatten()
-    secret_bits = ''.join(format(byte, '08b') for byte in flat_secret)
-    total_bits = len(secret_bits)
-    
     # Работаем с копией изображения
     stego = image.astype(np.float32)
     
@@ -36,9 +31,46 @@ def embed_image(image: np.ndarray, secret_img: np.ndarray, params: dict) -> np.n
     
     h, w = y_channel.shape
     max_blocks = (h // block_size) * (w // block_size)
+    max_capacity_bits = max_blocks  # 1 бит на блок
     
-    if total_bits > max_blocks:
-        raise ValueError(f"Секретное изображение слишком большое! Максимум {max_blocks} бит, требуется {total_bits}")
+    # Проверяем и автоматически масштабируем секретное изображение если нужно
+    original_secret_shape = secret_img.shape
+    required_bits = secret_img.size * 8
+    
+    if required_bits > max_capacity_bits:
+        # Вычисляем максимальное количество пикселей для секрета
+        max_secret_pixels = max_capacity_bits // 8
+        
+        # Вычисляем новый размер с сохранением пропорций
+        if len(secret_img.shape) == 3:
+            h_secret, w_secret, channels = secret_img.shape
+            max_secret_pixels_per_channel = max_secret_pixels // channels
+        else:
+            h_secret, w_secret = secret_img.shape
+            max_secret_pixels_per_channel = max_secret_pixels
+        
+        # Сохраняем пропорции
+        aspect_ratio = w_secret / h_secret
+        new_h = int(np.sqrt(max_secret_pixels_per_channel / aspect_ratio))
+        new_w = int(new_h * aspect_ratio)
+        
+        # Масштабируем секретное изображение
+        from PIL import Image as PILImage
+        if len(secret_img.shape) == 3:
+            secret_pil = PILImage.fromarray(secret_img)
+        else:
+            secret_pil = PILImage.fromarray(secret_img, mode='L')
+        
+        secret_pil = secret_pil.resize((new_w, new_h), PILImage.LANCZOS)
+        secret_img = np.array(secret_pil)
+        
+        print(f"⚠️ Секретное изображение автоматически масштабировано: {original_secret_shape} → {secret_img.shape}")
+        print(f"   Причина: требуется {required_bits} бит, доступно {max_capacity_bits} бит")
+    
+    # Преобразуем секретное изображение в биты
+    flat_secret = secret_img.flatten()
+    secret_bits = ''.join(format(byte, '08b') for byte in flat_secret)
+    total_bits = len(secret_bits)
     
     bit_idx = 0
     

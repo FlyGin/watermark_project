@@ -126,6 +126,7 @@ python -m unittest discover -s tests/unit_tests/dct_tests
 - ✅ Устойчивость к JPEG сжатию
 - ✅ Робастность к модификациям
 - ✅ Минимальные визуальные искажения
+- ✅ **Автоматическое масштабирование секрета** (новое!)
 
 **Недостатки:**
 - ❌ Низкая ёмкость (1 бит на блок 8x8)
@@ -134,6 +135,12 @@ python -m unittest discover -s tests/unit_tests/dct_tests
 **Параметры:**
 - `strength` (10-30) - сила встраивания
 - `block_size` (обычно 8) - размер блока DCT
+
+**Автоматическое масштабирование:**
+- Секретное изображение автоматически уменьшается, если превышает ёмкость контейнера
+- Сохраняются пропорции изображения
+- При извлечении можно восстановить исходный размер
+- Подробнее: `DCT_AUTO_SCALING.md`
 
 ### Сравнение алгоритмов
 
@@ -263,6 +270,9 @@ algorithms = {
 
 - **[README.md](README.md)** - основная документация (этот файл)
 - **[CLI_GUIDE.md](CLI_GUIDE.md)** - руководство по консольному интерфейсу
+- **[GUI_DCT_GUIDE.md](GUI_DCT_GUIDE.md)** - руководство по использованию DCT в GUI
+- **[DCT_AUTO_SCALING.md](DCT_AUTO_SCALING.md)** - автоматическое масштабирование для DCT ✨
+- **[QUICK_START_DCT_AUTOSCALE.md](QUICK_START_DCT_AUTOSCALE.md)** - быстрый старт с DCT ✨
 - **[tests/unit_tests/dct_tests/README.md](tests/unit_tests/dct_tests/README.md)** - документация DCT тестов
 
 ## Технические детали

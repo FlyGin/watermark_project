@@ -66,21 +66,39 @@ def create_main_layout(parent):
     # --- Выбор алгоритма стеганографии ---
     label_algo = QLabel("Алгоритм:")  # Текстовая надпись
     combo_algo = QComboBox()          # Выпадающий список
-    combo_algo.addItems(["LSB"])      # Пока доступен только алгоритм LSB
-    # В будущем можно добавить: ["LSB", "DCT", "DWT"]
+    combo_algo.addItems(["LSB", "DCT"])  # Доступные алгоритмы: LSB и DCT
     
-    # --- Выбор глубины встраивания ---
+    # --- Параметры для LSB ---
     label_depth = QLabel("Глубина:")  # Надпись для поля глубины
     spinbox_depth = QSpinBox()        # Поле для ввода числа с кнопками +/-
     spinbox_depth.setRange(1, 8)      # Диапазон: от 1 до 8 бит
     spinbox_depth.setValue(1)         # Значение по умолчанию: 1 бит
     spinbox_depth.setSuffix(" бит")   # Добавляем текст после числа
     
+    # --- Параметры для DCT ---
+    label_strength = QLabel("Сила:")  # Надпись для силы встраивания
+    spinbox_strength = QSpinBox()     # Поле для ввода силы
+    spinbox_strength.setRange(5, 50)  # Диапазон: от 5 до 50
+    spinbox_strength.setValue(15)     # Значение по умолчанию: 15
+    spinbox_strength.setVisible(False)  # Скрываем по умолчанию
+    label_strength.setVisible(False)    # Скрываем надпись
+    
+    label_block_size = QLabel("Размер блока:")  # Надпись для размера блока
+    spinbox_block_size = QSpinBox()              # Поле для размера блока
+    spinbox_block_size.setRange(4, 16)           # Диапазон: от 4 до 16
+    spinbox_block_size.setValue(8)               # Значение по умолчанию: 8
+    spinbox_block_size.setVisible(False)         # Скрываем по умолчанию
+    label_block_size.setVisible(False)           # Скрываем надпись
+    
     # Размещаем все элементы в горизонтальную компоновку
     algo_layout.addWidget(label_algo)
     algo_layout.addWidget(combo_algo)
     algo_layout.addWidget(label_depth)
     algo_layout.addWidget(spinbox_depth)
+    algo_layout.addWidget(label_strength)
+    algo_layout.addWidget(spinbox_strength)
+    algo_layout.addWidget(label_block_size)
+    algo_layout.addWidget(spinbox_block_size)
     algo_layout.addStretch()  # Добавляем растягивающийся элемент для красивого выравнивания
     
     # Добавляем всю секцию в главную вертикальную компоновку
@@ -229,6 +247,11 @@ def create_main_layout(parent):
     
     parent.combo_algo = combo_algo
     parent.spinbox_depth = spinbox_depth
+    parent.label_depth = label_depth
+    parent.spinbox_strength = spinbox_strength
+    parent.label_strength = label_strength
+    parent.spinbox_block_size = spinbox_block_size
+    parent.label_block_size = label_block_size
     parent.btn_load_cover = btn_load_cover
     parent.btn_load_wm = btn_load_wm
     parent.info_label = info_label
