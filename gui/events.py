@@ -13,14 +13,59 @@
 # через механизм сигналов и слотов PyQt5 (connect_events)
 # ============================================================================
 
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QDialog, QVBoxLayout, QTextEdit, QHBoxLayout, QPushButton, QLabel, QTabWidget, QWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PIL import Image      # Библиотека для работы с изображениями
 import numpy as np         # Библиотека для работы с массивами (изображения как массивы пикселей)
+import cv2                 # Библиотека OpenCV для обработки изображений
 import os                  # Функции для работы с файловой системой
 from watermark.embedding import embed      # Наши функции встраивания водяных знаков
 from watermark.extraction import extract   # Наши функции извлечения водяных знаков
+from utils.image_metrics import calculate_image_metrics, format_metrics as format_image_metrics
+from utils.text_metrics import calculate_text_metrics, format_metrics as format_text_metrics
+
+# ============================================================================
+# ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: КРАТКОЕ ОПИСАНИЕ КАЧЕСТВА
+# ============================================================================
+
+def get_quality_description(metrics):
+    """
+    Возвращает краткое описание качества на основе метрик.
+    Используется для компактного отображения в главном окне.
+    
+    Для изображений: оценка по PSNR и SSIM
+    Для текста: оценка по accuracy и similarity
+    """
+    if 'psnr' in metrics:  # Метрики изображения
+        psnr = metrics['psnr']
+        ssim = metrics['ssim']
+        
+        if psnr == float('inf'):
+            return "✅ Отлично (идентичны, PSNR=∞)"
+        elif psnr >= 40:
+            return f"✅ Отлично (PSNR={psnr:.2f} дБ, SSIM={ssim:.4f})"
+        elif psnr >= 30:
+            return f"✅ Хорошо (PSNR={psnr:.2f} дБ, SSIM={ssim:.4f})"
+        elif psnr >= 20:
+            return f"⚠️ Удовлетворительно (PSNR={psnr:.2f} дБ, SSIM={ssim:.4f})"
+        else:
+            return f"❌ Низкое (PSNR={psnr:.2f} дБ, SSIM={ssim:.4f})"
+    
+    elif 'accuracy' in metrics:  # Метрики текста
+        accuracy = metrics['accuracy']
+        similarity = metrics['similarity']
+        
+        if accuracy >= 99.9:
+            return f"✅ Отлично (Точность={accuracy:.2f}%, Схожесть={similarity:.2f}%)"
+        elif accuracy >= 95:
+            return f"✅ Хорошо (Точность={accuracy:.2f}%, Схожесть={similarity:.2f}%)"
+        elif accuracy >= 80:
+            return f"⚠️ Удовлетворительно (Точность={accuracy:.2f}%, Схожесть={similarity:.2f}%)"
+        else:
+            return f"❌ Низкое (Точность={accuracy:.2f}%, Схожесть={similarity:.2f}%)"
+    
+    return "❓ Неизвестно"
 
 def connect_events(parent):
     """
@@ -44,6 +89,7 @@ def connect_events(parent):
     parent.btn_save_result.clicked.connect(lambda: save_stego_result(parent))
     parent.btn_save_secret.clicked.connect(lambda: save_extracted_secret(parent))
     parent.btn_reset.clicked.connect(lambda: reset_gui(parent))
+    parent.btn_show_metrics.clicked.connect(lambda: show_metrics_dialog(parent))
     
     # Обработчик смены алгоритма
     parent.combo_algo.currentTextChanged.connect(lambda: on_algorithm_changed(parent))
@@ -52,7 +98,84 @@ def connect_events(parent):
     parent.secret_image_label.mousePressEvent = lambda event: on_secret_preview_clicked(parent, event)
     # Обработчик клика по превью восстановленного секрета
     parent.restored_image_label.mousePressEvent = lambda event: on_restored_secret_preview_clicked(parent, event)
+
 import tempfile
+
+def show_metrics_dialog(parent):
+    """
+    ========================================================================
+    ПОКАЗ ДИАЛОГА С ПОДРОБНЫМИ МЕТРИКАМИ
+    ========================================================================
+    Открывает модальное окно с детальной информацией о метриках качества.
+    Показывает две вкладки:
+    1. Метрики стегоизображения (исходное vs стего)
+    2. Метрики восстановленного секрета (оригинальный vs извлечённый)
+    ========================================================================
+    """
+    # Проверяем наличие метрик
+    if not hasattr(parent, 'stego_metrics') and not hasattr(parent, 'secret_metrics'):
+        QMessageBox.information(parent, "Метрики недоступны", 
+                               "Метрики ещё не вычислены. Выполните встраивание и извлечение.")
+        return
+    
+    # Создаём диалоговое окно
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("📊 Подробные метрики качества")
+    dialog.setMinimumSize(700, 500)
+    
+    layout = QVBoxLayout(dialog)
+    
+    # Создаём вкладки
+    tabs = QTabWidget()
+    
+    # Вкладка 1: Метрики стегоизображения
+    if hasattr(parent, 'stego_metrics'):
+        stego_tab = QWidget()
+        stego_layout = QVBoxLayout(stego_tab)
+        
+        stego_label = QLabel("🖼️ Сравнение: Исходное изображение vs Стегоизображение")
+        stego_label.setStyleSheet("font-weight: bold; font-size: 12pt; color: #2196F3; padding: 5px;")
+        stego_layout.addWidget(stego_label)
+        
+        stego_text = QTextEdit()
+        stego_text.setReadOnly(True)
+        stego_text.setText(parent.stego_metrics)
+        stego_text.setStyleSheet("font-family: Consolas, monospace; font-size: 10pt;")
+        stego_layout.addWidget(stego_text)
+        
+        tabs.addTab(stego_tab, "🖼️ Стегоизображение")
+    
+    # Вкладка 2: Метрики восстановленного секрета
+    if hasattr(parent, 'secret_metrics'):
+        secret_tab = QWidget()
+        secret_layout = QVBoxLayout(secret_tab)
+        
+        secret_label = QLabel("🔐 Сравнение: Оригинальный секрет vs Восстановленный секрет")
+        secret_label.setStyleSheet("font-weight: bold; font-size: 12pt; color: #4CAF50; padding: 5px;")
+        secret_layout.addWidget(secret_label)
+        
+        secret_text = QTextEdit()
+        secret_text.setReadOnly(True)
+        secret_text.setText(parent.secret_metrics)
+        secret_text.setStyleSheet("font-family: Consolas, monospace; font-size: 10pt;")
+        secret_layout.addWidget(secret_text)
+        
+        tabs.addTab(secret_tab, "🔐 Секрет")
+    
+    layout.addWidget(tabs)
+    
+    # Кнопка закрытия
+    btn_layout = QHBoxLayout()
+    btn_layout.addStretch()
+    btn_close = QPushButton("Закрыть")
+    btn_close.clicked.connect(dialog.close)
+    btn_close.setMinimumWidth(100)
+    btn_layout.addWidget(btn_close)
+    layout.addLayout(btn_layout)
+    
+    # Показываем диалог
+    dialog.exec_()
+
 def on_algorithm_changed(parent):
     """
     ========================================================================
@@ -411,6 +534,7 @@ def embed_watermark(parent):
             
             parent.embedded_secret_type = "text"
             parent.embedded_secret_length = text_size_bytes
+            parent.original_secret = secret  # Сохраняем оригинальный секрет для метрик
             if algorithm == "lsb":
                 parent.embedded_depth = depth
             elif algorithm == "dct":
@@ -453,6 +577,7 @@ def embed_watermark(parent):
             parent.embedded_secret_type = "image"
             parent.embedded_secret_shape = secret.shape  # Исходный размер
             parent.embedded_original_secret_shape = secret.shape  # Для восстановления после масштабирования
+            parent.original_secret = secret.copy()  # Сохраняем оригинальный секрет для метрик
             if algorithm == "lsb":
                 parent.embedded_depth = depth
             elif algorithm == "dct":
@@ -502,6 +627,33 @@ def embed_watermark(parent):
         parent.stego_result = result
         parent.result_text.append(f"✅ Встраивание успешно! Результат готов для предпросмотра и сохранения.")
         parent.btn_save_result.setEnabled(True)
+        
+        # ====================================================================
+        # ЭТАП 5.1: РАСЧЁТ МЕТРИК ДЛЯ СТЕГОИЗОБРАЖЕНИЯ
+        # ====================================================================
+        
+        try:
+            # Расчёт метрик качества (исходное vs стегоизображение)
+            stego_metrics = calculate_image_metrics(cover, result)
+            formatted_stego_metrics = format_image_metrics(stego_metrics)
+            
+            # Сохраняем подробные метрики для диалога
+            parent.stego_metrics = formatted_stego_metrics
+            
+            # Получаем краткую сводку (общую оценку качества)
+            quality_desc = get_quality_description(stego_metrics)
+            
+            # Отображаем только краткую сводку в главном окне
+            parent.metrics_summary_text.clear()
+            parent.metrics_summary_text.append(f"🖼️ Стегоизображение: {quality_desc}")
+            
+            # Активируем кнопку просмотра подробных метрик
+            parent.btn_show_metrics.setEnabled(True)
+            
+            parent.result_text.append("📊 Метрики стегоизображения рассчитаны")
+        except Exception as metrics_error:
+            parent.result_text.append(f"⚠️ Не удалось рассчитать метрики стегоизображения: {metrics_error}")
+        
         # Показываем превью стегоизображения (всегда изображение)
         img = Image.fromarray(result)
         import io
@@ -589,6 +741,28 @@ def extract_watermark(parent):
             parent.restored_image_label.clear()
             parent.restored_image_label.setText("📄 Восстановленный текст")
             parent.restored_image_label.setStyleSheet("border: 2px solid #2196F3; color: #2196F3;")
+            
+            # Вычисляем и отображаем метрики для текста
+            if hasattr(parent, 'original_secret') and isinstance(parent.original_secret, str):
+                metrics = calculate_text_metrics(parent.original_secret, extracted)
+                formatted = format_text_metrics(metrics)
+                
+                # Сохраняем подробные метрики для диалога
+                parent.secret_metrics = formatted
+                
+                # Получаем краткую сводку
+                quality_desc = get_quality_description(metrics)
+                
+                # Добавляем краткую сводку к существующему тексту (уже есть метрики стего)
+                current_summary = parent.metrics_summary_text.toPlainText()
+                if current_summary:
+                    parent.metrics_summary_text.append(f"\n🔐 Восстановленный секрет: {quality_desc}")
+                else:
+                    parent.metrics_summary_text.setText(f"🔐 Восстановленный секрет: {quality_desc}")
+                
+                # Активируем кнопку просмотра подробных метрик
+                parent.btn_show_metrics.setEnabled(True)
+            
         else:
             # Проверяем, было ли масштабирование при встраивании
             original_shape = getattr(parent, "embedded_original_secret_shape", None)
@@ -607,6 +781,44 @@ def extract_watermark(parent):
             pixmap.loadFromData(buf.getvalue())
             parent.restored_image_label.setPixmap(pixmap)
             parent.restored_image_label.setStyleSheet("border: 2px solid #4CAF50;")
+            
+            # Вычисляем и отображаем метрики для изображения
+            if hasattr(parent, 'original_secret') and isinstance(parent.original_secret, np.ndarray):
+                # Масштабируем извлечённое изображение до размера оригинального, если нужно
+                original_secret = parent.original_secret
+                if extracted.shape != original_secret.shape:
+                    # Масштабируем извлечённое изображение к оригинальному размеру для сравнения
+                    h_orig, w_orig = original_secret.shape[:2]
+                    extracted_resized = cv2.resize(extracted, (w_orig, h_orig), interpolation=cv2.INTER_LINEAR)
+                    metrics = calculate_image_metrics(original_secret, extracted_resized)
+                    formatted = format_image_metrics(metrics)
+                    formatted_with_note = (
+                        f"📊 Метрики восстановленного секрета\n"
+                        f"Оригинальный {original_secret.shape} vs "
+                        f"Извлечённый {extracted.shape} → масштабирован до {extracted_resized.shape}\n\n" + 
+                        formatted
+                    )
+                    # Сохраняем подробные метрики для диалога
+                    parent.secret_metrics = formatted_with_note
+                else:
+                    metrics = calculate_image_metrics(original_secret, extracted)
+                    formatted = format_image_metrics(metrics)
+                    # Сохраняем подробные метрики для диалога
+                    parent.secret_metrics = formatted
+                
+                # Получаем краткую сводку
+                quality_desc = get_quality_description(metrics)
+                
+                # Добавляем краткую сводку к существующему тексту
+                current_summary = parent.metrics_summary_text.toPlainText()
+                if current_summary:
+                    parent.metrics_summary_text.append(f"\n� Восстановленный секрет: {quality_desc}")
+                else:
+                    parent.metrics_summary_text.setText(f"🔐 Восстановленный секрет: {quality_desc}")
+                
+                # Активируем кнопку просмотра подробных метрик
+                parent.btn_show_metrics.setEnabled(True)
+        
         parent.btn_save_secret.setEnabled(True)
     except Exception as exc:
         parent.result_text.append(f"❌ Ошибка извлечения: {exc}")
@@ -650,13 +862,19 @@ def reset_gui(parent):
     parent.restored_image_label.clear()
     parent.restored_image_label.setText("Нет результата")
     parent.restored_image_label.setStyleSheet("border: 2px dashed #aaa; color: #666;")
+    
+    # Очистка метрик
+    parent.metrics_summary_text.clear()
+    parent.btn_show_metrics.setEnabled(False)
+    
     parent.btn_save_result.setEnabled(False)
     parent.btn_save_secret.setEnabled(False)
     attributes_to_clear = [
         'cover_path', 'wm_path', 'stego_result', 'embedded_secret_type', 
         'embedded_secret_length', 'embedded_secret_shape', 'embedded_depth', 
         'embedded_strength', 'embedded_block_size', 'embedded_algorithm',
-        'embedded_original_secret_shape', 'secret_type', 'extracted_secret'
+        'embedded_original_secret_shape', 'secret_type', 'extracted_secret',
+        'original_secret', 'stego_metrics', 'secret_metrics'
     ]
     for attr in attributes_to_clear:
         if hasattr(parent, attr):

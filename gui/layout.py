@@ -20,7 +20,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QTextEdit, QFileDialog, QLineEdit, QSpinBox,
-    QScrollArea, QFrame, QGridLayout
+    QScrollArea, QFrame, QGridLayout, QSizePolicy
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
@@ -211,11 +211,15 @@ def create_main_layout(parent):
     # ========================================================================
     # СЕКЦИЯ 5: КНОПКИ ОСНОВНЫХ ДЕЙСТВИЙ
     # ========================================================================
-    # Три главные кнопки для выполнения операций стеганографии
+    # Кнопки для управления и просмотра информации
     
     actions_layout = QHBoxLayout()
     btn_reset = QPushButton("🗑️ Сбросить")
+    btn_show_metrics = QPushButton("📊 Метрики качества")
+    btn_show_metrics.setEnabled(False)  # Неактивна до появления метрик
     actions_layout.addWidget(btn_reset)
+    actions_layout.addWidget(btn_show_metrics)
+    actions_layout.addStretch()  # Растягивающийся элемент справа
     layout.addLayout(actions_layout)
     
     # ========================================================================
@@ -233,6 +237,22 @@ def create_main_layout(parent):
     
     layout.addWidget(result_label)
     layout.addWidget(result_text)
+    
+    # ========================================================================
+    # СЕКЦИЯ 7: КОМПАКТНЫЙ ВЫВОД МЕТРИК КАЧЕСТВА
+    # ========================================================================
+    # Краткая информация о метриках (только итоговая оценка)
+    
+    metrics_summary_label = QLabel("📊 Итоговая оценка качества:")
+    metrics_summary_label.setStyleSheet("font-weight: bold; font-size: 11pt; margin-top: 5px;")
+    layout.addWidget(metrics_summary_label)
+    
+    metrics_summary_text = QTextEdit()
+    metrics_summary_text.setReadOnly(True)
+    metrics_summary_text.setMaximumHeight(60)
+    metrics_summary_text.setPlaceholderText("Метрики появятся после встраивания и извлечения")
+    metrics_summary_text.setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd;")
+    layout.addWidget(metrics_summary_text)
     
     # ========================================================================
     # СОХРАНЕНИЕ ССЫЛОК НА ВИДЖЕТЫ
@@ -260,7 +280,9 @@ def create_main_layout(parent):
     parent.btn_extract = btn_extract
     parent.btn_save_secret = btn_save_secret
     parent.btn_reset = btn_reset
+    parent.btn_show_metrics = btn_show_metrics
     parent.result_text = result_text
+    parent.metrics_summary_text = metrics_summary_text
     parent.cover_image_label = cover_image_label
     parent.secret_image_label = secret_image_label
     parent.stego_image_label = stego_image_label
