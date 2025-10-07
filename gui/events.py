@@ -432,7 +432,8 @@ def embed_watermark(parent):
         # ====================================================================
         
         # Загружаем исходное изображение как массив пикселей
-        cover = np.array(Image.open(cover_path))
+        # Принудительно конвертируем в RGB, чтобы избежать проблем с RGBA
+        cover = np.array(Image.open(cover_path).convert('RGB'))
         
         # Получаем выбранный алгоритм
         algorithm = parent.combo_algo.currentText().lower()
@@ -541,7 +542,8 @@ def embed_watermark(parent):
                 parent.embedded_strength = strength
                 parent.embedded_block_size = block_size
         elif secret_type == "image":
-            secret = np.array(Image.open(wm_path))
+            # Загружаем секретное изображение и принудительно конвертируем в RGB
+            secret = np.array(Image.open(wm_path).convert('RGB'))
             
             # Проверка ёмкости для изображений (только для LSB, для DCT есть автоматическое масштабирование)
             if algorithm == "lsb":
