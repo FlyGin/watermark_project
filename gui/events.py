@@ -330,10 +330,87 @@ def embed_watermark(parent):
         # ====================================================================
         
         if secret_type == "text":
-            with open(wm_path, 'r', encoding='utf-8') as f:
-                secret = f.read()
+            # Попытка чтения с разными кодировками
+            encodings = ['utf-8', 'cp1251', 'latin-1', 'ascii']
+            secret = None
+            used_encoding = None
+            
+            for encoding in encodings:
+                try:
+                    with open(wm_path, 'r', encoding=encoding) as f:
+                        secret = f.read()
+                    used_encoding = encoding
+                    break
+                except (UnicodeDecodeError, UnicodeError):
+                    continue
+            
+            # Если не удалось прочитать ни одной кодировкой, читаем как бинарные данные
+            if secret is None:
+                try:
+                    with open(wm_path, 'rb') as f:
+                        binary_data = f.read()
+                    # Пытаемся декодировать с игнорированием ошибок
+                    secret = binary_data.decode('utf-8', errors='ignore')
+                    used_encoding = 'utf-8 (с игнорированием ошибок)'
+                    parent.result_text.append(f"⚠️ Файл содержит неверную кодировку. Используется {used_encoding}")
+                except Exception as e:
+                    raise ValueError(f"Не удалось прочитать текстовый файл: {e}")
+            else:
+                parent.result_text.append(f"ℹ️ Текст прочитан с кодировкой: {used_encoding}")
+            
+            # Проверка на пустой текст
+            if not secret.strip():
+                raise ValueError("Текстовый файл пуст или содержит только пробелы")
+            
+            # Проверка на слишком большой текст (для GUI предупреждение)
+            text_size_bytes = len(secret.encode("utf-8"))
+            if text_size_bytes > 10000:  # 10 KB
+                parent.result_text.append(f"⚠️ Большой текст ({text_size_bytes} байт). Может потребоваться большой контейнер.")
+            
+            # Проверка ёмкости контейнера
+            h, w = cover.shape[:2]
+            if algorithm == "lsb":
+                # Для LSB: capacity = w * h * channels * depth / 8
+                channels = 3 if len(cover.shape) == 3 else 1
+                capacity_bits = w * h * channels * depth
+                capacity_bytes = capacity_bits // 8
+            elif algorithm == "dct":
+                # Для DCT: capacity = (w // block_size) * (h // block_size) бит
+                capacity_bits = (w // block_size) * (h // block_size)
+                capacity_bytes = capacity_bits // 8
+            
+            required_bytes = text_size_bytes
+            
+            if required_bytes > capacity_bytes:
+                # Вычисляем рекомендуемый размер контейнера
+                if algorithm == "lsb":
+                    min_pixels = required_bytes * 8 // (channels * depth)
+                    min_side = int(np.sqrt(min_pixels)) + 1
+                elif algorithm == "dct":
+                    min_blocks = required_bytes * 8
+                    min_side = int(np.sqrt(min_blocks)) * block_size + block_size
+                
+                error_msg = (
+                    f"Текст слишком большой для выбранного контейнера!\n\n"
+                    f"Размер контейнера: {w}×{h}\n"
+                    f"Ёмкость: {capacity_bytes} байт ({capacity_bits} бит)\n"
+                    f"Требуется: {required_bytes} байт ({required_bytes * 8} бит)\n\n"
+                    f"Рекомендации:\n"
+                    f"1. Используйте контейнер минимум {min_side}×{min_side}\n"
+                    f"2. Уменьшите размер текста (сейчас {text_size_bytes} байт)\n"
+                )
+                
+                if algorithm == "dct":
+                    error_msg += f"3. Используйте LSB алгоритм (выше ёмкость)\n"
+                elif algorithm == "lsb" and depth < 8:
+                    error_msg += f"3. Увеличьте глубину встраивания (сейчас {depth})\n"
+                
+                QMessageBox.warning(parent, "Недостаточная ёмкость", error_msg)
+                parent.result_text.append(f"❌ Текст слишком большой: требуется {required_bytes} байт, доступно {capacity_bytes} байт")
+                return
+            
             parent.embedded_secret_type = "text"
-            parent.embedded_secret_length = len(secret.encode("utf-8"))
+            parent.embedded_secret_length = text_size_bytes
             if algorithm == "lsb":
                 parent.embedded_depth = depth
             elif algorithm == "dct":
@@ -341,6 +418,38 @@ def embed_watermark(parent):
                 parent.embedded_block_size = block_size
         elif secret_type == "image":
             secret = np.array(Image.open(wm_path))
+            
+            # Проверка ёмкости для изображений (только для LSB, для DCT есть автоматическое масштабирование)
+            if algorithm == "lsb":
+                h, w = cover.shape[:2]
+                channels = 3 if len(cover.shape) == 3 else 1
+                capacity_bits = w * h * channels * depth
+                capacity_bytes = capacity_bits // 8
+                
+                required_bytes = secret.size
+                
+                if required_bytes > capacity_bytes:
+                    # Вычисляем рекомендуемый размер контейнера
+                    min_pixels = required_bytes * 8 // (channels * depth)
+                    min_side = int(np.sqrt(min_pixels)) + 1
+                    
+                    error_msg = (
+                        f"Секретное изображение слишком большое для контейнера!\n\n"
+                        f"Размер контейнера: {w}×{h}\n"
+                        f"Ёмкость: {capacity_bytes} байт\n"
+                        f"Секретное изображение: {secret.shape}\n"
+                        f"Требуется: {required_bytes} байт\n\n"
+                        f"Рекомендации:\n"
+                        f"1. Используйте контейнер минимум {min_side}×{min_side}\n"
+                        f"2. Уменьшите секретное изображение\n"
+                        f"3. Увеличьте глубину встраивания (сейчас {depth})\n"
+                        f"4. Используйте DCT с автоматическим масштабированием\n"
+                    )
+                    
+                    QMessageBox.warning(parent, "Недостаточная ёмкость", error_msg)
+                    parent.result_text.append(f"❌ Изображение слишком большое: требуется {required_bytes} байт, доступно {capacity_bytes} байт")
+                    return
+            
             parent.embedded_secret_type = "image"
             parent.embedded_secret_shape = secret.shape  # Исходный размер
             parent.embedded_original_secret_shape = secret.shape  # Для восстановления после масштабирования

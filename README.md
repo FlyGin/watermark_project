@@ -268,11 +268,23 @@ algorithms = {
 
 ## Документация
 
+### Основная документация:
 - **[README.md](README.md)** - основная документация (этот файл)
-- **[CLI_GUIDE.md](CLI_GUIDE.md)** - руководство по консольному интерфейсу
-- **[GUI_DCT_GUIDE.md](GUI_DCT_GUIDE.md)** - руководство по использованию DCT в GUI
-- **[DCT_AUTO_SCALING.md](DCT_AUTO_SCALING.md)** - автоматическое масштабирование для DCT ✨
-- **[QUICK_START_DCT_AUTOSCALE.md](QUICK_START_DCT_AUTOSCALE.md)** - быстрый старт с DCT ✨
+- **[requirements.txt](requirements.txt)** - список зависимостей
+
+### Руководства пользователя:
+- **[CLI_GUIDE.md](docs/CLI_GUIDE.md)** - руководство по консольному интерфейсу
+- **[GUI_DCT_GUIDE.md](docs/GUI_DCT_GUIDE.md)** - руководство по использованию DCT в GUI
+
+### Техническая документация:
+- **[DCT_AUTO_SCALING.md](docs/DCT_AUTO_SCALING.md)** - автоматическое масштабирование для DCT ✨
+- **[QUICK_START_DCT_AUTOSCALE.md](docs/QUICK_START_DCT_AUTOSCALE.md)** - быстрый старт с DCT ✨
+- **[ENCODING_FIX.md](docs/ENCODING_FIX.md)** - поддержка различных кодировок текста ✨
+- **[CAPACITY_CHECK.md](docs/CAPACITY_CHECK.md)** - проверка ёмкости перед встраиванием ✨
+- **[CHANGELOG_DCT_AUTOSCALE.md](docs/CHANGELOG_DCT_AUTOSCALE.md)** - история изменений ✨
+- **[SUMMARY_IMPROVEMENTS.md](docs/SUMMARY_IMPROVEMENTS.md)** - сводка улучшений v1.1.x ✨
+
+### Документация тестов:
 - **[tests/unit_tests/dct_tests/README.md](tests/unit_tests/dct_tests/README.md)** - документация DCT тестов
 
 ## Технические детали
