@@ -64,11 +64,13 @@ def embed_text(image: np.ndarray, secret_text: str, params: dict) -> np.ndarray:
             
             # Встраиваем бит через модуляцию 2
             if bit_value == 1:
+                # Для бита 1: делаем число нечётным
                 if quantized % 2 == 0:
                     quantized += 1
             else:  # bit_value == 0
+                # Для бита 0: делаем число чётным
                 if quantized % 2 != 0:
-                    quantized += 1
+                    quantized -= 1  # Исправлено: было += 1
             
             dct_block[4, 4] = quantized * strength
             

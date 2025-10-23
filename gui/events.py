@@ -54,7 +54,8 @@ def get_quality_description(metrics):
     
     elif 'accuracy' in metrics:  # Метрики текста
         accuracy = metrics['accuracy']
-        similarity = metrics['similarity']
+        # Используем правильный ключ из calculate_text_metrics()
+        similarity = metrics.get('similarity_ratio', metrics.get('similarity', 0)) * 100
         
         if accuracy >= 99.9:
             return f"✅ Отлично (Точность={accuracy:.2f}%, Схожесть={similarity:.2f}%)"
@@ -455,7 +456,7 @@ def embed_watermark(parent):
         
         if secret_type == "text":
             # Попытка чтения с разными кодировками
-            encodings = ['utf-8', 'cp1251', 'latin-1', 'ascii']
+            encodings = ['utf-8', 'cp1251', 'latin-1']
             secret = None
             used_encoding = None
             
@@ -468,19 +469,19 @@ def embed_watermark(parent):
                 except (UnicodeDecodeError, UnicodeError):
                     continue
             
-            # Если не удалось прочитать ни одной кодировкой, читаем как бинарные данные
+            # latin-1 должна всегда сработать (читает любые байты 0-255)
+            # Если не удалось прочитать ни одной кодировкой (что невозможно с latin-1)
             if secret is None:
-                try:
-                    with open(wm_path, 'rb') as f:
-                        binary_data = f.read()
-                    # Пытаемся декодировать с игнорированием ошибок
-                    secret = binary_data.decode('utf-8', errors='ignore')
-                    used_encoding = 'utf-8 (с игнорированием ошибок)'
-                    parent.result_text.append(f"⚠️ Файл содержит неверную кодировку. Используется {used_encoding}")
-                except Exception as e:
-                    raise ValueError(f"Не удалось прочитать текстовый файл: {e}")
+                # На всякий случай, читаем как latin-1 напрямую
+                with open(wm_path, 'r', encoding='latin-1') as f:
+                    secret = f.read()
+                used_encoding = 'latin-1'
+                parent.result_text.append(f"⚠️ Файл прочитан с кодировкой latin-1 (универсальная)")
             else:
                 parent.result_text.append(f"ℹ️ Текст прочитан с кодировкой: {used_encoding}")
+            
+            # Сохраняем кодировку для последующего использования
+            parent.embedded_text_encoding = used_encoding
             
             # Проверка на пустой текст
             if not secret.strip():
@@ -746,24 +747,34 @@ def extract_watermark(parent):
             
             # Вычисляем и отображаем метрики для текста
             if hasattr(parent, 'original_secret') and isinstance(parent.original_secret, str):
-                metrics = calculate_text_metrics(parent.original_secret, extracted)
-                formatted = format_text_metrics(metrics)
-                
-                # Сохраняем подробные метрики для диалога
-                parent.secret_metrics = formatted
-                
-                # Получаем краткую сводку
-                quality_desc = get_quality_description(metrics)
-                
-                # Добавляем краткую сводку к существующему тексту (уже есть метрики стего)
-                current_summary = parent.metrics_summary_text.toPlainText()
-                if current_summary:
-                    parent.metrics_summary_text.append(f"\n🔐 Восстановленный секрет: {quality_desc}")
-                else:
-                    parent.metrics_summary_text.setText(f"🔐 Восстановленный секрет: {quality_desc}")
-                
-                # Активируем кнопку просмотра подробных метрик
-                parent.btn_show_metrics.setEnabled(True)
+                try:
+                    metrics = calculate_text_metrics(parent.original_secret, extracted)
+                    
+                    # Проверяем, что метрики получены корректно
+                    if not metrics or not isinstance(metrics, dict):
+                        raise ValueError("Метрики не были рассчитаны")
+                    
+                    formatted = format_text_metrics(metrics)
+                    
+                    # Сохраняем подробные метрики для диалога
+                    parent.secret_metrics = formatted
+                    
+                    # Получаем краткую сводку
+                    quality_desc = get_quality_description(metrics)
+                    
+                    # Добавляем краткую сводку к существующему тексту (уже есть метрики стего)
+                    current_summary = parent.metrics_summary_text.toPlainText()
+                    if current_summary:
+                        parent.metrics_summary_text.append(f"\n🔐 Восстановленный секрет: {quality_desc}")
+                    else:
+                        parent.metrics_summary_text.setText(f"🔐 Восстановленный секрет: {quality_desc}")
+                    
+                    # Активируем кнопку просмотра подробных метрик
+                    parent.btn_show_metrics.setEnabled(True)
+                    
+                except Exception as metrics_error:
+                    parent.result_text.append(f"⚠️ Не удалось рассчитать метрики текста: {metrics_error}")
+                    parent.metrics_summary_text.append(f"\n🔐 Восстановленный секрет: ⚠️ Метрики недоступны")
             
         else:
             # Проверяем, было ли масштабирование при встраивании
@@ -786,40 +797,45 @@ def extract_watermark(parent):
             
             # Вычисляем и отображаем метрики для изображения
             if hasattr(parent, 'original_secret') and isinstance(parent.original_secret, np.ndarray):
-                # Масштабируем извлечённое изображение до размера оригинального, если нужно
-                original_secret = parent.original_secret
-                if extracted.shape != original_secret.shape:
-                    # Масштабируем извлечённое изображение к оригинальному размеру для сравнения
-                    h_orig, w_orig = original_secret.shape[:2]
-                    extracted_resized = cv2.resize(extracted, (w_orig, h_orig), interpolation=cv2.INTER_LINEAR)
-                    metrics = calculate_image_metrics(original_secret, extracted_resized)
-                    formatted = format_image_metrics(metrics)
-                    formatted_with_note = (
-                        f"📊 Метрики восстановленного секрета\n"
-                        f"Оригинальный {original_secret.shape} vs "
-                        f"Извлечённый {extracted.shape} → масштабирован до {extracted_resized.shape}\n\n" + 
-                        formatted
-                    )
-                    # Сохраняем подробные метрики для диалога
-                    parent.secret_metrics = formatted_with_note
-                else:
-                    metrics = calculate_image_metrics(original_secret, extracted)
-                    formatted = format_image_metrics(metrics)
-                    # Сохраняем подробные метрики для диалога
-                    parent.secret_metrics = formatted
-                
-                # Получаем краткую сводку
-                quality_desc = get_quality_description(metrics)
-                
-                # Добавляем краткую сводку к существующему тексту
-                current_summary = parent.metrics_summary_text.toPlainText()
-                if current_summary:
-                    parent.metrics_summary_text.append(f"\n� Восстановленный секрет: {quality_desc}")
-                else:
-                    parent.metrics_summary_text.setText(f"🔐 Восстановленный секрет: {quality_desc}")
-                
-                # Активируем кнопку просмотра подробных метрик
-                parent.btn_show_metrics.setEnabled(True)
+                try:
+                    # Масштабируем извлечённое изображение до размера оригинального, если нужно
+                    original_secret = parent.original_secret
+                    if extracted.shape != original_secret.shape:
+                        # Масштабируем извлечённое изображение к оригинальному размеру для сравнения
+                        h_orig, w_orig = original_secret.shape[:2]
+                        extracted_resized = cv2.resize(extracted, (w_orig, h_orig), interpolation=cv2.INTER_LINEAR)
+                        metrics = calculate_image_metrics(original_secret, extracted_resized)
+                        formatted = format_image_metrics(metrics)
+                        formatted_with_note = (
+                            f"📊 Метрики восстановленного секрета\n"
+                            f"Оригинальный {original_secret.shape} vs "
+                            f"Извлечённый {extracted.shape} → масштабирован до {extracted_resized.shape}\n\n" + 
+                            formatted
+                        )
+                        # Сохраняем подробные метрики для диалога
+                        parent.secret_metrics = formatted_with_note
+                    else:
+                        metrics = calculate_image_metrics(original_secret, extracted)
+                        formatted = format_image_metrics(metrics)
+                        # Сохраняем подробные метрики для диалога
+                        parent.secret_metrics = formatted
+                    
+                    # Получаем краткую сводку
+                    quality_desc = get_quality_description(metrics)
+                    
+                    # Добавляем краткую сводку к существующему тексту
+                    current_summary = parent.metrics_summary_text.toPlainText()
+                    if current_summary:
+                        parent.metrics_summary_text.append(f"\n🔐 Восстановленный секрет: {quality_desc}")
+                    else:
+                        parent.metrics_summary_text.setText(f"🔐 Восстановленный секрет: {quality_desc}")
+                    
+                    # Активируем кнопку просмотра подробных метрик
+                    parent.btn_show_metrics.setEnabled(True)
+                    
+                except Exception as metrics_error:
+                    parent.result_text.append(f"⚠️ Не удалось рассчитать метрики изображения: {metrics_error}")
+                    parent.metrics_summary_text.append(f"\n🔐 Восстановленный секрет: ⚠️ Метрики недоступны")
         
         parent.btn_save_secret.setEnabled(True)
     except Exception as exc:
@@ -876,7 +892,7 @@ def reset_gui(parent):
         'embedded_secret_length', 'embedded_secret_shape', 'embedded_depth', 
         'embedded_strength', 'embedded_block_size', 'embedded_algorithm',
         'embedded_original_secret_shape', 'secret_type', 'extracted_secret',
-        'original_secret', 'stego_metrics', 'secret_metrics'
+        'original_secret', 'stego_metrics', 'secret_metrics', 'embedded_text_encoding'
     ]
     for attr in attributes_to_clear:
         if hasattr(parent, attr):
@@ -936,6 +952,8 @@ def save_extracted_secret(parent):
     elif secret_type == "text":
         fname, _ = QFileDialog.getSaveFileName(parent, "Сохранить восстановленный текст", "extracted_secret.txt", "Text files (*.txt)")
         if fname:
-            with open(fname, 'w', encoding='utf-8') as f:
+            # Используем ту же кодировку, что была при чтении исходного файла
+            encoding = getattr(parent, 'embedded_text_encoding', 'utf-8')
+            with open(fname, 'w', encoding=encoding) as f:
                 f.write(secret)
-            parent.result_text.append(f"💾 Восстановленный текст сохранён: {fname}")
+            parent.result_text.append(f"💾 Восстановленный текст сохранён: {fname} (кодировка: {encoding})")
